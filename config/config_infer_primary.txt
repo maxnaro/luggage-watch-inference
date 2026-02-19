@@ -1,0 +1,18 @@
+[property]
+gpu-id=0
+net-scale-factor=0.00392156862745098   # 1/255
+model-color-format=0                   # RGB
+onnx-file=../../training/model/model.onnx
+labelfile-path=labels.txt
+batch-size=1
+network-mode=2                         # FP16
+num-detected-classes=2                 # luggage, person
+interval=0
+gie-unique-id=1
+process-mode=1                         # primary detector
+network-type=0                         # detector
+cluster-mode=2                         # DBSCAN or NMS
+
+[class-attrs-all]
+pre-cluster-threshold=0.25
+nms-iou-threshold=0.45
