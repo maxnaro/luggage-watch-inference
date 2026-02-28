@@ -10,3 +10,7 @@ build/
 dist/
 __pycache__/
 *.pyc
+
+# Allow .onnx files to be tracked
+!*.onnx
+
