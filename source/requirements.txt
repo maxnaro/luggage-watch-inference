@@ -1,0 +1,6 @@
+numpy
+pycairo
+pyds 
+PyGObject
+PyGObject-stubs
+typing_extensions
