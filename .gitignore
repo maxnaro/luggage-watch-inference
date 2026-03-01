@@ -14,3 +14,4 @@ __pycache__/
 # Allow .onnx files to be tracked
 !*.onnx
 
+.venv/
