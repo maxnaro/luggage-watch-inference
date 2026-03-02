@@ -1,18 +1,22 @@
 [property]
 gpu-id=0
-net-scale-factor=0.00392156862745098   # 1/255
-model-color-format=0                   # RGB
-onnx-file=../../training/model/model.onnx
+# 1/255
+net-scale-factor=0.00392156862745098
+# RGB
+model-color-format=0
+onnx-file=../model/yolo26s_1280_270226.onnx
+model-engine-file=../model/yolo26s_1280_270226.onnx_b1_gpu0_fp16.engine
 labelfile-path=labels.txt
 batch-size=1
-network-mode=2                         # FP16
-num-detected-classes=2                 # luggage, person
+# FP16
+network-mode=2
+# luggage, person
+num-detected-classes=2
 interval=0
 gie-unique-id=1
-process-mode=1                         # primary detector
-network-type=0                         # detector
-cluster-mode=2                         # DBSCAN or NMS
-
-[class-attrs-all]
-pre-cluster-threshold=0.25
-nms-iou-threshold=0.45
+# primary detector
+process-mode=1
+# custom network type — output parsed in Python probe
+network-type=100
+# attach raw output tensors to metadata
+output-tensor-meta=1
