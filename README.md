@@ -51,6 +51,12 @@ cp nvdsinfer_custom_impl_Yolo/libnvdsinfer_custom_impl_Yolo.so /path/to/your/lug
 
 **Note**: the `make` command may fail searching for a specific directory `-I/opt/nvidia/deepstream/deepstream/sources/includes`. If you installed DeepStream using `apt` this can happen as it is installed in a versioned folder (e.g., `/opt/nvidia/deepstream/deepstream-7.1`). In order to fix this, create a symlink between the versioned and non-versioned paths.
 
+#### Downloading the Re-ID Model
+
+```bash
+sudo wget 'https://api.ngc.nvidia.com/v2/models/nvidia/tao/reidentificationnet/versions/deployable_v1.2/files/resnet50_market1501.etlt' -P /path/to/your/luggage-watch-inference/model/
+```
+
 ### Run
 
 ```bash

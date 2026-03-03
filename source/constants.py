@@ -23,7 +23,7 @@ PRIMARY_INFER_CONFIG_FILE = "config_infer_primary.txt"
 TRACKER_LIB_FILE = (
     "/opt/nvidia/deepstream/deepstream-7.1/lib/libnvds_nvmultiobjecttracker.so"
 )
-TRACKER_CONFIG_FILE = "config_tracker_NvDCF_perf.yml"
+TRACKER_CONFIG_FILE = "config_tracker_NvDeepSORT.yml"
 
 SOURCE_ELEMENT_NAME = "source"
 MUXER_ELEMENT_NAME = "muxer"
