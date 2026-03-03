@@ -33,8 +33,6 @@ def tracker_src_pad_buffer_probe(pad, info, u_data):
             except StopIteration:
                 break
 
-            # The YOLO label and box are already set!
-            # We just append the Tracker ID to the display text.
             if obj_meta.object_id != c.UNTRACKED_OBJECT_ID:
                 # obj_meta.obj_label will automatically be "person" or "luggage"
                 obj_meta.text_params.display_text = (

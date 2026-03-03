@@ -54,6 +54,10 @@ cp nvdsinfer_custom_impl_Yolo/libnvdsinfer_custom_impl_Yolo.so /path/to/your/lug
 ### Run
 
 ```bash
+# To force max performance out of the Jetson
+sudo nvpmodel -m 0
+sudo jetson_clocks
+
 source source/.venv/bin/activate
 python source/app.py
 ```
