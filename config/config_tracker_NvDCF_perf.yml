@@ -27,7 +27,7 @@ TargetManagement:
   minIouDiff4NewTarget: 0.5   # If the IOU between the newly detected object and any of the existing targets is higher than this threshold, this newly detected object will be discarded.
   minTrackerConfidence: 0.2   # If the confidence of an object tracker is lower than this on the fly, then it will be tracked in shadow mode. Valid Range: [0.0, 1.0]
   probationAge: 3 # If the target's age exceeds this, the target will be considered to be valid.
-  maxShadowTrackingAge: 30  # Max length of shadow tracking. If the shadowTrackingAge exceeds this limit, the tracker will be terminated.
+  maxShadowTrackingAge: 150  # Max length of shadow tracking. If the shadowTrackingAge exceeds this limit, the tracker will be terminated.
   earlyTerminationAge: 1   # If the shadowTrackingAge reaches this threshold while in TENTATIVE period, the target will be terminated prematurely.
 
 TrajectoryManagement:
@@ -42,7 +42,7 @@ DataAssociator:
   minMatchingScore4Overall: 0.0   # Min total score
   minMatchingScore4SizeSimilarity: 0.6  # Min bbox size similarity score
   minMatchingScore4Iou: 0.0       # Min IOU score
-  minMatchingScore4VisualSimilarity: 0.7  # Min visual similarity score
+  minMatchingScore4VisualSimilarity: 0.5  # Min visual similarity score
 
   # [Association Metric: Weights]
   matchingScoreWeight4VisualSimilarity: 0.6  # Weight for the visual similarity (in terms of correlation response ratio)
@@ -55,7 +55,7 @@ StateEstimator:
   # [Dynamics Modeling]
   processNoiseVar4Loc: 2.0    # Process noise variance for bbox center
   processNoiseVar4Size: 1.0   # Process noise variance for bbox size
-  processNoiseVar4Vel: 0.1    # Process noise variance for velocity
+  processNoiseVar4Vel: 1    # Process noise variance for velocity
   measurementNoiseVar4Detector: 4.0    # Measurement noise variance for detector's detection
   measurementNoiseVar4Tracker: 16.0    # Measurement noise variance for tracker's localization
 
@@ -64,7 +64,7 @@ VisualTracker:
 
   # [NvDCF: Feature Extraction]
   useColorNames: 1     # Use ColorNames feature
-  useHog: 0            # Use Histogram-of-Oriented-Gradient (HOG) feature
+  useHog: 1            # Use Histogram-of-Oriented-Gradient (HOG) feature
   featureImgSizeLevel: 2  # Size of a feature image. Valid range: {1, 2, 3, 4, 5}, from the smallest to the largest
   featureFocusOffsetFactor_y: -0.2 # The offset for the center of hanning window relative to the feature height. The center of hanning window would move by (featureFocusOffsetFactor_y*featureMatSize.height) in vertical direction
 
