@@ -25,7 +25,7 @@ TargetManagement:
 
   # [Creation & Termination Policy]
   minIouDiff4NewTarget: 0.5   # If the IOU between the newly detected object and any of the existing targets is higher than this threshold, this newly detected object will be discarded.
-  minTrackerConfidence: 0.2   # If the confidence of an object tracker is lower than this on the fly, then it will be tracked in shadow mode. Valid Range: [0.0, 1.0]
+  minTrackerConfidence: 0.05   # If the confidence of an object tracker is lower than this on the fly, then it will be tracked in shadow mode. Valid Range: [0.0, 1.0]
   probationAge: 3 # If the target's age exceeds this, the target will be considered to be valid.
   maxShadowTrackingAge: 150  # Max length of shadow tracking. If the shadowTrackingAge exceeds this limit, the tracker will be terminated.
   earlyTerminationAge: 1   # If the shadowTrackingAge reaches this threshold while in TENTATIVE period, the target will be terminated prematurely.
@@ -42,15 +42,15 @@ DataAssociator:
   minMatchingScore4Overall: 0.0   # Min total score
   minMatchingScore4SizeSimilarity: 0.6  # Min bbox size similarity score
   minMatchingScore4Iou: 0.0       # Min IOU score
-  minMatchingScore4VisualSimilarity: 0.5  # Min visual similarity score
+  minMatchingScore4VisualSimilarity: 0.2  # Min visual similarity score
 
   # [Association Metric: Weights]
-  matchingScoreWeight4VisualSimilarity: 0.6  # Weight for the visual similarity (in terms of correlation response ratio)
+  matchingScoreWeight4VisualSimilarity: 0.2  # Weight for the visual similarity (in terms of correlation response ratio)
   matchingScoreWeight4SizeSimilarity: 0.0    # Weight for the Size-similarity score
-  matchingScoreWeight4Iou: 0.4   # Weight for the IOU score
+  matchingScoreWeight4Iou: 0.8   # Weight for the IOU score
 
 StateEstimator:
-  stateEstimatorType: 1  # the type of state estimator among { DUMMY=0, SIMPLE=1, REGULAR=2 }
+  stateEstimatorType: 2  # the type of state estimator among { DUMMY=0, SIMPLE=1, REGULAR=2 }
 
   # [Dynamics Modeling]
   processNoiseVar4Loc: 2.0    # Process noise variance for bbox center
@@ -69,6 +69,6 @@ VisualTracker:
   featureFocusOffsetFactor_y: -0.2 # The offset for the center of hanning window relative to the feature height. The center of hanning window would move by (featureFocusOffsetFactor_y*featureMatSize.height) in vertical direction
 
   # [NvDCF: Correlation Filter]
-  filterLr: 0.075 # learning rate for DCF filter in exponential moving average. Valid Range: [0.0, 1.0]
+  filterLr: 0.005 # learning rate for DCF filter in exponential moving average. Valid Range: [0.0, 1.0]
   filterChannelWeightsLr: 0.1 # learning rate for the channel weights among feature channels. Valid Range: [0.0, 1.0]
   gaussianSigma: 0.75 # Standard deviation for Gaussian for desired response when creating DCF filter [pixels]
