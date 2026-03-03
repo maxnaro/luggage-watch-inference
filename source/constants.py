@@ -13,8 +13,11 @@ SOURCE_URI = "file:///home/max/source/AVSS_E2.avi"
 
 MUXER_WIDTH = 1280
 MUXER_HEIGHT = 1280
+TRACKER_WIDTH = 640
+TRACKER_HEIGHT = 640
 MUXER_BATCH_SIZE = 1
 MUXER_SINK_PAD_NAME = "sink_0"
+OSD_PROCESS_MODE = 1
 
 PRIMARY_INFER_CONFIG_FILE = "config_infer_primary.txt"
 TRACKER_LIB_FILE = (
@@ -35,6 +38,7 @@ NVINFER = "nvinfer"
 NVTRACKER = "nvtracker"
 NVDSOSD = "nvdsosd"
 NVEGLGLESSINK = "nveglglessink"
+QUEUE = "queue"
 
 PROPERTY_URI = "uri"
 PROPERTY_WIDTH = "width"
@@ -43,6 +47,9 @@ PROPERTY_BATCH_SIZE = "batch-size"
 PROPERTY_CONFIG_FILE_PATH = "config-file-path"
 PROPERTY_LL_LIB_FILE = "ll-lib-file"
 PROPERTY_LL_CONFIG_FILE = "ll-config-file"
+PROPERTY_TRACKER_WIDTH = "tracker-width"
+PROPERTY_TRACKER_HEIGHT = "tracker-height"
+PROPERTY_PROCESS_MODE = "process-mode"
 
 PGIE_SRC_PAD_NAME = "src"
 PAD_ADDED_SIGNAL = "pad-added"
