@@ -27,7 +27,7 @@ sudo apt install -y libcairo2-dev libgirepository1.0-dev pkg-config python3-dev
 
 # Install DeepStream Python bindings (pyds)
 # Download the matching wheel from https://github.com/NVIDIA-AI-IOT/deepstream_python_apps/releases
-pip install pyds-<version>-py3-none-linux_aarch64.whl
+pip install https://github.com/NVIDIA-AI-IOT/deepstream_python_apps/releases/download/v1.2.0/pyds-1.2.0-cp310-cp310-linux_aarch64.whl
 
 # Install Python dependencies
 pip install -r source/requirements.txt
