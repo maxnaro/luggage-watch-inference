@@ -74,3 +74,7 @@ PIPELINE_STATE_PREFIX = "Pipeline state"
 
 # Untracked objects in DeepStream pyds are assigned the max 64-bit uint
 UNTRACKED_OBJECT_ID = 18446744073709551615
+
+ABANDONMENT_TIMEOUT_SECONDS = 30
+OWNER_RADIUS_PX = 200            
+MOVEMENT_THRESHOLD_PX = 10 
