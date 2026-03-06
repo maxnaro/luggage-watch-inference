@@ -54,7 +54,7 @@ cp nvdsinfer_custom_impl_Yolo/libnvdsinfer_custom_impl_Yolo.so /path/to/your/lug
 #### Downloading the Re-ID Model
 
 ```bash
-sudo wget 'https://api.ngc.nvidia.com/v2/models/nvidia/tao/reidentificationnet/versions/deployable_v1.2/files/resnet50_market1501.etlt' -P /path/to/your/luggage-watch-inference/model/
+sudo wget 'https://api.ngc.nvidia.com/v2/models/nvidia/tao/reidentificationnet/versions/deployable_v1.0/files/resnet50_market1501.etlt' -P /path/to/your/luggage-watch-inference/model/
 ```
 
 ### Run
