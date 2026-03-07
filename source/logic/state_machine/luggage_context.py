@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass, field
 
 from logic.state_machine.states import Attended, Unattended, Abandoned, State
@@ -18,6 +19,7 @@ class LuggageContext:
     owner_id: int | None = None
     state: State = field(default_factory=Attended)
     last_bbox: BBox | None = None
+    last_seen: float = field(default_factory=time.monotonic)
 
     def transition_to(self, new_state: State) -> None:
         self.state = new_state

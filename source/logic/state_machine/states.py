@@ -9,6 +9,7 @@ from constants import (
 )  # TODO: replace this with some sort of config or args
 
 if TYPE_CHECKING:
+    # HACK: avoid circular import for type hints, this is very ugly
     from logic.state_machine.luggage_context import LuggageContext
 
 
