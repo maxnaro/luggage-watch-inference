@@ -3,6 +3,9 @@ import os
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 CONFIG_DIR = os.path.join(ROOT_DIR, "config")
 
+GSTREAMER_PACKAGE = "Gst"
+GSTREAMER_VERSION = "1.0"
+
 CONFIDENCE_THRESHOLD = 0.25
 LABELS = ["person", "luggage"]
 MAX_DETECTIONS = 300
@@ -74,3 +77,10 @@ PIPELINE_STATE_PREFIX = "Pipeline state"
 
 # Untracked objects in DeepStream pyds are assigned the max 64-bit uint
 UNTRACKED_OBJECT_ID = 18446744073709551615
+
+# Tracking parameters # TODO: replace these with some sort of config or args
+ABANDONMENT_TIMEOUT_SECONDS = 30
+OWNER_RADIUS_PX = 200            
+MOVEMENT_THRESHOLD_PX = 10 
+SPATIAL_TOLERANCE_PX = 50
+CONTEXT_TTL_SECONDS = 5

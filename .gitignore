@@ -16,5 +16,7 @@ __pycache__/
 
 .venv/
 
+# External dependencies
 *.so
 *.etlt
+*.whl

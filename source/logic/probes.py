@@ -1,9 +1,11 @@
 import pyds
 import gi
 
-gi.require_version("Gst", "1.0")
-from gi.repository import Gst  # type:ignore
+from logic.process import process_frame
 import constants as c
+
+gi.require_version(c.GSTREAMER_PACKAGE, c.GSTREAMER_VERSION)
+from gi.repository import Gst  # type:ignore
 
 
 def tracker_src_pad_buffer_probe(pad, info, u_data):
@@ -50,8 +52,7 @@ def tracker_src_pad_buffer_probe(pad, info, u_data):
             except StopIteration:
                 break
 
-        # TODO: Implement State Machine
-        # process_frame(persons, luggage_items)
+        print(process_frame(persons, luggage_items))
 
         try:
             l_frame = l_frame.next
