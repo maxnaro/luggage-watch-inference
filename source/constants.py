@@ -3,6 +3,9 @@ import os
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 CONFIG_DIR = os.path.join(ROOT_DIR, "config")
 
+GSTREAMER_PACKAGE = "Gst"
+GSTREAMER_VERSION = "1.0"
+
 CONFIDENCE_THRESHOLD = 0.25
 LABELS = ["person", "luggage"]
 MAX_DETECTIONS = 300

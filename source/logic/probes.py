@@ -2,10 +2,10 @@ import pyds
 import gi
 
 from logic.process import process_frame
-
-gi.require_version("Gst", "1.0")
-from gi.repository import Gst  # type:ignore
 import constants as c
+
+gi.require_version(c.GSTREAMER_PACKAGE, c.GSTREAMER_VERSION)
+from gi.repository import Gst  # type:ignore
 
 
 def tracker_src_pad_buffer_probe(pad, info, u_data):

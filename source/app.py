@@ -1,11 +1,10 @@
 import gi
 
-GSTREAMER_PACKAGE = "Gst"
-GSTREAMER_VERSION = "1.0"
-gi.require_version(GSTREAMER_PACKAGE, GSTREAMER_VERSION)
+import constants as c
+
+gi.require_version(c.GSTREAMER_PACKAGE, c.GSTREAMER_VERSION)
 from gi.repository import Gst, GLib  # type: ignore
 
-import constants as c
 from pipeline.builder import build_pipeline
 from logic.probes import tracker_src_pad_buffer_probe
 
