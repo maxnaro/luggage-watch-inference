@@ -2,12 +2,14 @@ from __future__ import annotations
 
 import time
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
-from inference.source.constants import (
+from constants import (
     ABANDONMENT_TIMEOUT_SECONDS,
 )  # TODO: replace this with some sort of config or args
-from inference.source.logic.state_machine.luggage_context import LuggageContext
+
+if TYPE_CHECKING:
+    from logic.state_machine.luggage_context import LuggageContext
 
 
 class State(ABC):

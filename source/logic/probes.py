@@ -1,7 +1,7 @@
 import pyds
 import gi
 
-from inference.source.logic.process import process_frame
+from logic.process import process_frame
 
 gi.require_version("Gst", "1.0")
 from gi.repository import Gst  # type:ignore
@@ -52,7 +52,7 @@ def tracker_src_pad_buffer_probe(pad, info, u_data):
             except StopIteration:
                 break
 
-        process_frame(persons, luggage_items)
+        print(process_frame(persons, luggage_items))
 
         try:
             l_frame = l_frame.next
