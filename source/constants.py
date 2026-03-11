@@ -94,3 +94,5 @@ COLORS = {
     "Abandoned": (1.0, 0.0, 0.0, 1.0),  # Red
     "default": (1.0, 1.0, 1.0, 1.0),  # White
 }
+
+DISPLAY_META_LIMIT = 16
