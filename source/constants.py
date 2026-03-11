@@ -77,10 +77,22 @@ PIPELINE_STATE_PREFIX = "Pipeline state"
 
 # Untracked objects in DeepStream pyds are assigned the max 64-bit uint
 UNTRACKED_OBJECT_ID = 18446744073709551615
+PERSON_CLASS_ID = 0
+LUGGAGE_CLASS_ID = 1
 
 # Tracking parameters # TODO: replace these with some sort of config or args
 ABANDONMENT_TIMEOUT_SECONDS = 30
-OWNER_RADIUS_PX = 200            
-MOVEMENT_THRESHOLD_PX = 10 
+OWNER_RADIUS_PX = 200
+MOVEMENT_THRESHOLD_PX = 10
 SPATIAL_TOLERANCE_PX = 50
 CONTEXT_TTL_SECONDS = 5
+
+COLORS = {
+    "person": (0.0, 0.5, 1.0, 1.0),  # Blue
+    "Attended": (0.0, 1.0, 0.0, 1.0),  # Green
+    "Unattended": (1.0, 0.6, 0.0, 1.0),  # Orange
+    "Abandoned": (1.0, 0.0, 0.0, 1.0),  # Red
+    "default": (1.0, 1.0, 1.0, 1.0),  # White
+}
+
+DISPLAY_META_LIMIT = 16

@@ -17,6 +17,9 @@ class State(ABC):
     @property
     @abstractmethod
     def name(self) -> str: ...
+    
+    def __eq__(self, other: str):
+        return self.name() == other
 
     @abstractmethod
     def evaluate(

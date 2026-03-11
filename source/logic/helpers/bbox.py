@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from pyds import NvOSD_RectParams
 
 
 @dataclass(frozen=True)
@@ -11,6 +12,12 @@ class BBox:
     y: float
     width: float
     height: float
+
+    def __init__(self, rect_params: NvOSD_RectParams):
+        object.__setattr__(self, "x", rect_params.left)
+        object.__setattr__(self, "y", rect_params.top)
+        object.__setattr__(self, "width", rect_params.width)
+        object.__setattr__(self, "height", rect_params.height)
 
     @property
     def centre(self) -> tuple[float, float]:

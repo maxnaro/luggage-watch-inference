@@ -24,10 +24,10 @@ class LuggageContext:
     def transition_to(self, new_state: State) -> None:
         self.state = new_state
 
-    def update(self, luggage_bbox: BBox, person_bboxes: dict[int, BBox]) -> str:
+    def update(self, luggage_bbox: BBox, person_bboxes: dict[int, BBox]) -> dict[str, str]:
         """
         Called once per frame for a given luggage item.
-        Returns the name of the current state after evaluation.
+        Returns the name of the current state and `owner_id` after evaluation.
         """
         is_moving = True
         if self.last_bbox is not None:
@@ -47,7 +47,7 @@ class LuggageContext:
             is_attended = self.owner_id is not None
 
         self.state.evaluate(self, is_attended, is_moving)
-        return self.state.name
+        return {"state": self.state.name, "owner_id": self.owner_id}
 
     @staticmethod
     def _get_nearest_person_id(

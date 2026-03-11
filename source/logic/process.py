@@ -7,27 +7,25 @@ from constants import SPATIAL_TOLERANCE_PX, CONTEXT_TTL_SECONDS
 _contexts: dict[int, LuggageContext] = {}  # luggage_id -> context
 
 
-def process_frame(persons: list, luggage_items: list) -> dict[int, str]:
+def process_frame(persons: list, luggage_items: list) -> dict[int, dict[str, str]]:
     """
     Evaluates the spatial relationship between persons and luggage.
     Updates the state of each luggage item (Attended -> Unattended -> Abandoned).
-    Returns {luggage_id: state_name}.
+    Returns {luggage_id: {"state": state_name, "owner_id": owner_id}}.
     """
     person_bboxes: dict[int, BBox] = {}
     for person in persons:
         rect = person.rect_params
-        person_bboxes[person.object_id] = BBox(
-            rect.left, rect.top, rect.width, rect.height
-        )
+        person_bboxes[person.object_id] = BBox(rect)
 
     seen_ids: set[int] = set()
-    results: dict[int, str] = {}  # luggage_id -> state_name
+    results: dict[int, dict[str, str]] = {}  # luggage_id -> {"state": state_name, "owner_id": owner_id}
 
     for luggage in luggage_items:
         luggage_id = luggage.object_id
         seen_ids.add(luggage_id)
         rect = luggage.rect_params
-        luggage_bbox = BBox(rect.left, rect.top, rect.width, rect.height)
+        luggage_bbox = BBox(rect)
 
         _handle_tracker_flip(luggage_id, luggage_bbox, seen_ids)
 
