@@ -47,10 +47,10 @@ def tracker_src_pad_buffer_probe(pad, info, u_data):
             except StopIteration:
                 break
 
-            luggage_info = process_frame(persons, luggage_items)
-            print(luggage_info) # TEST
-            
-            update_osd_metadata(batch_meta, frame_meta, persons, luggage_info)
+        luggage_info = process_frame(persons, luggage_items)
+        print(luggage_info) # TEST
+
+        update_osd_metadata(batch_meta, frame_meta, persons, luggage_info)
 
         try:
             frame = frame.next
