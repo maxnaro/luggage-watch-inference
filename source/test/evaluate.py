@@ -23,72 +23,10 @@ from gi.repository import Gst, GLib  # type: ignore
 
 import constants as c
 from pipeline.builder import build_pipeline
-from logic.process import process_frame, _contexts
+from logic.probes import tracker_src_pad_buffer_probe, set_event_logger
+from logic.process import _contexts
 from test.event_logger import EventLogger
 from test.metrics import evaluate_video, summarise, EvalSummary
-
-
-# ── Shared logger instance (used by the probe) ──────────────────────────
-_logger = EventLogger()
-
-
-def _make_probe(logger: EventLogger):
-    """Returns a buffer probe function that feeds frame data into the logger."""
-
-    def _probe(pad, info, u_data):
-        import pyds
-
-        gst_buffer = info.get_buffer()
-        if not gst_buffer:
-            return Gst.PadProbeReturn.OK
-
-        batch_meta = pyds.gst_buffer_get_nvds_batch_meta(hash(gst_buffer))
-        frame = batch_meta.frame_meta_list
-
-        while frame is not None:
-            try:
-                frame_meta = pyds.NvDsFrameMeta.cast(frame.data)
-            except StopIteration:
-                break
-
-            obj = frame_meta.obj_meta_list
-            persons = []
-            luggage_items = []
-
-            while obj is not None:
-                try:
-                    obj_meta = pyds.NvDsObjectMeta.cast(obj.data)
-                except StopIteration:
-                    break
-
-                if obj_meta.object_id != c.UNTRACKED_OBJECT_ID:
-                    if obj_meta.class_id == c.PERSON_CLASS_ID:
-                        persons.append(obj_meta)
-                    elif obj_meta.class_id == c.LUGGAGE_CLASS_ID:
-                        luggage_items.append(obj_meta)
-
-                try:
-                    obj = obj.next
-                except StopIteration:
-                    break
-
-            # Capture bounding boxes before they are consumed
-            luggage_bboxes: dict[int, tuple[float, float, float, float]] = {}
-            for item in luggage_items:
-                r = item.rect_params
-                luggage_bboxes[item.object_id] = (r.left, r.top, r.width, r.height)
-
-            luggage_info = process_frame(persons, luggage_items)
-            logger.log_frame(frame_meta.frame_num, luggage_info, luggage_bboxes)
-
-            try:
-                frame = frame.next
-            except StopIteration:
-                break
-
-        return Gst.PadProbeReturn.OK
-
-    return _probe
 
 
 def _run_pipeline_for_video(video_path: str, logger: EventLogger) -> None:
@@ -96,15 +34,20 @@ def _run_pipeline_for_video(video_path: str, logger: EventLogger) -> None:
     logger.reset()
     _contexts.clear()
 
+    # Wire the logger into the existing probe
+    set_event_logger(logger)
+
     # Override the source URI for this video
     original_uri = c.SOURCE_URI
     c.SOURCE_URI = f"file://{video_path}"
 
     try:
-        pipeline, elements = build_pipeline()
+        pipeline, elements = build_pipeline(headless=True)
 
         tracker_pad = elements["object_tracker"].get_static_pad("src")
-        tracker_pad.add_probe(Gst.PadProbeType.BUFFER, _make_probe(logger), 0)
+        tracker_pad.add_probe(
+            Gst.PadProbeType.BUFFER, tracker_src_pad_buffer_probe, 0
+        )
 
         pipeline.set_state(Gst.State.PLAYING)
         loop = GLib.MainLoop()
@@ -130,6 +73,7 @@ def _run_pipeline_for_video(video_path: str, logger: EventLogger) -> None:
             pipeline.set_state(Gst.State.NULL)
     finally:
         c.SOURCE_URI = original_uri
+        set_event_logger(None)
 
 
 def _print_summary(summary: EvalSummary) -> None:

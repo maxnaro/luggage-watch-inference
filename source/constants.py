@@ -41,6 +41,7 @@ NVINFER = "nvinfer"
 NVTRACKER = "nvtracker"
 NVDSOSD = "nvdsosd"
 NVEGLGLESSINK = "nveglglessink"
+FAKESINK = "fakesink"
 QUEUE = "queue"
 
 PROPERTY_URI = "uri"

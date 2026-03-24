@@ -7,8 +7,12 @@ from gi.repository import Gst  # type: ignore
 import constants as c
 
 
-def build_pipeline():
-    """Creates and links the GStreamer elements for the DeepStream pipeline."""
+def build_pipeline(headless: bool = False):
+    """Creates and links the GStreamer elements for the DeepStream pipeline.
+
+    Args:
+        headless: If True, use fakesink instead of nveglglessink (for evaluation).
+    """
     pipeline = Gst.Pipeline()
 
     source = Gst.ElementFactory.make(c.URI_DECODE_BIN, c.SOURCE_ELEMENT_NAME)
@@ -16,7 +20,8 @@ def build_pipeline():
     primary_infer = Gst.ElementFactory.make(c.NVINFER, c.PRIMARY_INFER_ELEMENT_NAME)
     object_tracker = Gst.ElementFactory.make(c.NVTRACKER, c.TRACKER_ELEMENT_NAME)
     osd = Gst.ElementFactory.make(c.NVDSOSD, c.OSD_ELEMENT_NAME)
-    sink = Gst.ElementFactory.make(c.NVEGLGLESSINK, c.SINK_ELEMENT_NAME)
+    sink_type = c.FAKESINK if headless else c.NVEGLGLESSINK
+    sink = Gst.ElementFactory.make(sink_type, c.SINK_ELEMENT_NAME)
 
     queue0 = Gst.ElementFactory.make(c.QUEUE, c.QUEUE + "0")
     queue1 = Gst.ElementFactory.make(c.QUEUE, c.QUEUE + "1")
