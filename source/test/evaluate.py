@@ -29,7 +29,9 @@ from test.event_logger import EventLogger
 from test.metrics import evaluate_video, summarise, EvalSummary
 
 
-def _run_pipeline_for_video(video_path: str, logger: EventLogger) -> None:
+def _run_pipeline_for_video(
+    video_path: str, logger: EventLogger, headless: bool = False
+) -> None:
     """Run the DeepStream pipeline on a single video and collect events."""
     logger.reset()
     _contexts.clear()
@@ -42,7 +44,7 @@ def _run_pipeline_for_video(video_path: str, logger: EventLogger) -> None:
     c.SOURCE_URI = f"file://{video_path}"
 
     try:
-        pipeline, elements = build_pipeline(headless=True)
+        pipeline, elements = build_pipeline(headless=headless)
 
         tracker_pad = elements["object_tracker"].get_static_pad("src")
         tracker_pad.add_probe(
@@ -129,6 +131,11 @@ def main():
         default=90,
         help="Allowed frame deviation for a true positive (default: 90)",
     )
+    parser.add_argument(
+        "--headless",
+        action="store_true",
+        help="Use fakesink instead of nveglglessink (no display required)",
+    )
     args = parser.parse_args()
 
     with open(args.ground_truth) as f:
@@ -145,7 +152,7 @@ def main():
             continue
 
         print(f"  Running {video_name} ...")
-        _run_pipeline_for_video(video_path, logger)
+        _run_pipeline_for_video(video_path, logger, headless=args.headless)
 
         print(f"    Detected {len(logger.events)} abandonment event(s)")
         result = evaluate_video(
