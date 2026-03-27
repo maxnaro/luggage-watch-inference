@@ -7,7 +7,7 @@ from gi.repository import Gst  # type: ignore
 import constants as c
 
 
-def build_pipeline():
+def build_pipeline(source_uri: str | None = None, headless: bool = False):
     """Creates and links the GStreamer elements for the DeepStream pipeline."""
     pipeline = Gst.Pipeline()
 
@@ -16,7 +16,8 @@ def build_pipeline():
     primary_infer = Gst.ElementFactory.make(c.NVINFER, c.PRIMARY_INFER_ELEMENT_NAME)
     object_tracker = Gst.ElementFactory.make(c.NVTRACKER, c.TRACKER_ELEMENT_NAME)
     osd = Gst.ElementFactory.make(c.NVDSOSD, c.OSD_ELEMENT_NAME)
-    sink = Gst.ElementFactory.make(c.NVEGLGLESSINK, c.SINK_ELEMENT_NAME)
+    sink_factory = c.FAKESINK if headless else c.NVEGLGLESSINK
+    sink = Gst.ElementFactory.make(sink_factory, c.SINK_ELEMENT_NAME)
 
     queue0 = Gst.ElementFactory.make(c.QUEUE, c.QUEUE + "0")
     queue1 = Gst.ElementFactory.make(c.QUEUE, c.QUEUE + "1")
@@ -42,7 +43,7 @@ def build_pipeline():
         )
 
     # Set properties
-    source.set_property(c.PROPERTY_URI, c.SOURCE_URI)
+    source.set_property(c.PROPERTY_URI, source_uri or c.SOURCE_URI)
 
     muxer.set_property(c.PROPERTY_WIDTH, c.MUXER_WIDTH)
     muxer.set_property(c.PROPERTY_HEIGHT, c.MUXER_HEIGHT)
@@ -61,6 +62,9 @@ def build_pipeline():
     object_tracker.set_property(c.PROPERTY_TRACKER_HEIGHT, c.TRACKER_HEIGHT)
 
     osd.set_property(c.PROPERTY_PROCESS_MODE, c.OSD_PROCESS_MODE)
+    if headless:
+        sink.set_property(c.PROPERTY_SYNC, False)
+        sink.set_property(c.PROPERTY_ASYNC, False)
 
     # Add elements to pipeline
     for element in [
