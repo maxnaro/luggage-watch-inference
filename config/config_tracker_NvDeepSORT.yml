@@ -81,6 +81,6 @@ ReID:
   addFeatureNormalization: 1 # If reid feature is not normalized in network, adding normalization on output so each reid feature has l2 norm equal to 1
 
   # [Paths and Names]
-  tltEncodedModel: "../model/resnet50_market1501.etlt" # NVIDIA TAO model path
+  tltEncodedModel: "model/resnet50_market1501.etlt" # NVIDIA TAO model path
   tltModelKey: "nvidia_tao" # NVIDIA TAO model key
-    modelEngineFile: "../model/resnet50_market1501.etlt_b100_gpu0_fp16.engine" # Engine file path
+  modelEngineFile: "model/resnet50_market1501.etlt_b100_gpu0_fp16.engine" # Engine file path
