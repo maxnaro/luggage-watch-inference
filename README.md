@@ -57,7 +57,7 @@ cp nvdsinfer_custom_impl_Yolo/libnvdsinfer_custom_impl_Yolo.so /path/to/your/lug
 sudo wget 'https://api.ngc.nvidia.com/v2/models/nvidia/tao/reidentificationnet/versions/deployable_v1.0/files/resnet50_market1501.etlt' -P /path/to/your/luggage-watch-inference/model/
 ```
 
-### Run
+### Run (Local)
 
 ```bash
 # To force max performance out of the Jetson
@@ -65,9 +65,61 @@ sudo nvpmodel -m 0
 sudo jetson_clocks
 
 source source/.venv/bin/activate
-python source/app.py
+
+# Single video
+python source/app.py --input /path/to/video.mp4 --output-dir ./outputs/mot
+
+# Dataset directory (one .txt MOT file per video)
+python source/app.py --input /path/to/dataset --recursive --output-dir ./outputs/mot
+```
+
+### MOT Output Format
+
+Each output file is in MOT-style CSV rows:
+
+```text
+frame,id,bb_left,bb_top,bb_width,bb_height,conf,class,visibility
+```
+
+Class IDs:
+- `0` = person
+- `1` = luggage
+
+### Headless Docker Batch Export (for Ground Truth Pre-Annotation)
+
+Build the image:
+
+```bash
+docker build -t luggage-watch-inference:latest .
+```
+
+The Docker build compiles the custom YOLO parser library and downloads the
+Re-ID model automatically, so no separate host-side setup is required.
+
+Run on a mounted dataset directory:
+
+```bash
+docker run --rm --runtime nvidia \
+	-v /path/to/dataset:/data:ro \
+	-v /path/to/output:/out \
+	luggage-watch-inference:latest \
+	--input /data \
+	--recursive \
+	--output-dir /out \
+	--no-overlay
+```
+
+For a single input video in the mounted dataset:
+
+```bash
+docker run --rm --runtime nvidia \
+	-v /path/to/dataset:/data:ro \
+	-v /path/to/output:/out \
+	luggage-watch-inference:latest \
+	--input /data/example.mp4 \
+	--output-dir /out
 ```
 
 On first run, TensorRT will build an engine file from the ONNX model.
-This takes ~10-15 minutes but only happens once — subsequent runs load
+This takes ~10-15 minutes but only happens once; subsequent runs load
 the cached `.engine` file in seconds.
