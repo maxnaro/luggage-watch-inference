@@ -71,10 +71,11 @@ ENV DEBIAN_FRONTEND=noninteractive \
 
 WORKDIR /workspace/inference
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
+RUN apt-get update && apt-get install -y \
     python3-pip \
     python3-gi \
     python3-gst-1.0 \
+    gstreamer1.0-libav \
     python3-dev \
     pkg-config \
     libcairo2-dev \
@@ -82,6 +83,23 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     wget \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
+
+# The DeepStream base image ships package metadata for several FFmpeg/codec
+# libraries but strips the actual .so files.  --reinstall forces apt to
+# re-extract them so the GStreamer libav plugin can load.
+RUN apt-get update && apt-get install --reinstall -y \
+    libavcodec58 \
+    libavutil56 \
+    libswresample3 \
+    libavformat58 \
+    libmp3lame0 \
+    libx264-163 \
+    libx265-199 \
+    libxvidcore4 \
+    libvpx7 \
+    libmpg123-0 \
+    && rm -rf /var/lib/apt/lists/* \
+    && ldconfig
 
 COPY source/requirements.txt /tmp/requirements.txt
 RUN python3 -m pip install --no-cache-dir --upgrade pip && \
@@ -118,6 +136,8 @@ COPY . .
 COPY --from=parser-builder /tmp/libnvdsinfer_custom_impl_Yolo.so /workspace/inference/config/libnvdsinfer_custom_impl_Yolo.so
 
 RUN wget -q -O /workspace/inference/model/resnet50_market1501.etlt ${REID_MODEL_URL}
+
+RUN ln -sf /workspace/inference/model/model_b1_gpu0_fp16.engine /workspace/inference/model_b1_gpu0_fp16.engine
 
 ENV PYTHONPATH=/workspace/inference/source
 
