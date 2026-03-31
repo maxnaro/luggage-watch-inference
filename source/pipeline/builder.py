@@ -92,8 +92,22 @@ def build_pipeline(source_uri: str | None = None, headless: bool = False):
     queue3.link(sink)
 
     def on_pad_added(src, new_pad):
-        sink_pad = muxer.request_pad_simple(c.MUXER_SINK_PAD_NAME)
-        new_pad.link(sink_pad)
+        caps = new_pad.get_current_caps() or new_pad.query_caps(None)
+        struct = caps.get_structure(0) if caps and caps.get_size() > 0 else None
+        is_nvmm = struct and "memory:NVMM" in struct.get_name() if struct else False
+
+        if struct and struct.get_name().startswith("video/") and not is_nvmm:
+            # Software-decoded stream (e.g. avdec_mpeg4) outputs system memory.
+            # Insert nvvideoconvert to copy into NVMM for nvstreammux.
+            converter = Gst.ElementFactory.make("nvvideoconvert", None)
+            pipeline.add(converter)
+            converter.sync_state_with_parent()
+            new_pad.link(converter.get_static_pad("sink"))
+            sink_pad = muxer.request_pad_simple(c.MUXER_SINK_PAD_NAME)
+            converter.get_static_pad("src").link(sink_pad)
+        else:
+            sink_pad = muxer.request_pad_simple(c.MUXER_SINK_PAD_NAME)
+            new_pad.link(sink_pad)
 
     source.connect(c.PAD_ADDED_SIGNAL, on_pad_added)
 

@@ -22,6 +22,8 @@ def tracker_src_pad_buffer_probe(pad, info, u_data):
     writer = probe_data.get("writer")
     draw_overlay = probe_data.get("draw_overlay", True)
 
+    frame_base = probe_data.get("frame_base")
+
     batch_meta = pyds.gst_buffer_get_nvds_batch_meta(hash(gst_buffer))
     frame = batch_meta.frame_meta_list
 
@@ -48,7 +50,10 @@ def tracker_src_pad_buffer_probe(pad, info, u_data):
                     luggage_items.append(obj_meta)
 
                 if isinstance(writer, MotWriter):
-                    _write_mot_row(writer, frame_meta, obj_meta)
+                    if frame_base is None:
+                        frame_base = int(frame_meta.frame_num)
+                        probe_data["frame_base"] = frame_base
+                    _write_mot_row(writer, frame_meta, obj_meta, frame_base)
 
             try:
                 obj = obj.next
@@ -68,7 +73,7 @@ def tracker_src_pad_buffer_probe(pad, info, u_data):
     return Gst.PadProbeReturn.OK
 
 
-def _write_mot_row(writer: MotWriter, frame_meta, obj_meta) -> None:
+def _write_mot_row(writer: MotWriter, frame_meta, obj_meta, frame_base: int) -> None:
     if obj_meta.class_id not in {c.PERSON_CLASS_ID, c.LUGGAGE_CLASS_ID}:
         return
 
@@ -78,7 +83,7 @@ def _write_mot_row(writer: MotWriter, frame_meta, obj_meta) -> None:
 
     rect = obj_meta.rect_params
     writer.write(
-        frame_number=int(frame_meta.frame_num) + 1,
+        frame_number=(int(frame_meta.frame_num) - frame_base) + 1,
         track_id=int(obj_meta.object_id),
         left=max(0.0, float(rect.left)),
         top=max(0.0, float(rect.top)),
