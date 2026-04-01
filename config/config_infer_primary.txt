@@ -23,3 +23,6 @@ engine-create-func-name=NvDsInferYoloCudaEngineGet
 nms-iou-threshold=0.45
 pre-cluster-threshold=0.25
 topk=300
+
+[class-attrs-0]
+pre-cluster-threshold=0.6
