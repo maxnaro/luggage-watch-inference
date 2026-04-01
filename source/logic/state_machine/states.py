@@ -4,13 +4,11 @@ import time
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
-from constants import (
-    ABANDONMENT_TIMEOUT_SECONDS,
-)  # TODO: replace this with some sort of config or args
+from ... import constants as c
 
 if TYPE_CHECKING:
     # HACK: avoid circular import for type hints, this is very ugly
-    from logic.state_machine.luggage_context import LuggageContext
+    from .luggage_context import LuggageContext
 
 
 class State(ABC):
@@ -43,7 +41,7 @@ class Attended(State):
 
 class Unattended(State):
     def __init__(self):
-        self._abandonment_timeout = ABANDONMENT_TIMEOUT_SECONDS
+        self._abandonment_timeout = c.ABANDONMENT_TIMEOUT_SECONDS
         self._entered_at: float = time.monotonic()
 
     @property

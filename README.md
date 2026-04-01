@@ -65,7 +65,7 @@ sudo nvpmodel -m 0
 sudo jetson_clocks
 
 source source/.venv/bin/activate
-python source/app.py
+python -m source.app
 ```
 
 On first run, TensorRT will build an engine file from the ONNX model.

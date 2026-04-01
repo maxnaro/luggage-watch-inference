@@ -1,12 +1,23 @@
+from __future__ import annotations
+
 import pyds
 import gi
 
-from ui.overlay import update_osd_metadata
-from logic.process import process_frame
-import constants as c
+from ..ui.overlay import update_osd_metadata
+from .process import process_frame
+from .. import constants as c
 
 gi.require_version(c.GSTREAMER_PACKAGE, c.GSTREAMER_VERSION)
 from gi.repository import Gst  # type:ignore
+
+# Optional event logger for evaluation — set externally before running the pipeline.
+_event_logger = None
+
+
+def set_event_logger(logger) -> None:
+    """Attach an EventLogger instance for evaluation runs."""
+    global _event_logger
+    _event_logger = logger
 
 
 def tracker_src_pad_buffer_probe(pad, info, u_data):
@@ -48,7 +59,13 @@ def tracker_src_pad_buffer_probe(pad, info, u_data):
                 break
 
         luggage_info = process_frame(persons, luggage_items)
-        print(luggage_info) # TEST
+
+        if _event_logger is not None:
+            luggage_bboxes = {}
+            for item in luggage_items:
+                r = item.rect_params
+                luggage_bboxes[item.object_id] = (r.left, r.top, r.width, r.height)
+            _event_logger.log_frame(frame_meta.frame_num, luggage_info, luggage_bboxes)
 
         update_osd_metadata(batch_meta, frame_meta, persons, luggage_info)
 

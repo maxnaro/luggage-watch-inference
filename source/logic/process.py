@@ -1,10 +1,15 @@
 import time
 
-from logic.helpers.bbox import BBox
-from logic.state_machine.luggage_context import LuggageContext
-from constants import SPATIAL_TOLERANCE_PX, CONTEXT_TTL_SECONDS
+from .helpers.bbox import BBox
+from .state_machine.luggage_context import LuggageContext
+from ..constants import SPATIAL_TOLERANCE_PX, CONTEXT_TTL_SECONDS
 
 _contexts: dict[int, LuggageContext] = {}  # luggage_id -> context
+
+
+def reset_contexts() -> None:
+    """Clear all tracked luggage contexts."""
+    _contexts.clear()
 
 
 def process_frame(persons: list, luggage_items: list) -> dict[int, dict[str, str]]:
