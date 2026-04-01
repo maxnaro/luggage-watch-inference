@@ -21,7 +21,7 @@ class LuggageContext:
     def transition_to(self, new_state: State) -> None:
         self.state = new_state
 
-    def update(self, luggage_bbox: BBox, person_bboxes: dict[int, BBox]) -> dict[str, str]:
+    def update(self, luggage_bbox: BBox, person_bboxes: dict[int, BBox]) -> dict[str, str | int | None]:
         """
         Called once per frame for a given luggage item.
         Returns the name of the current state and `owner_id` after evaluation.

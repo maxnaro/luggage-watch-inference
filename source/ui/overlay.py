@@ -11,7 +11,7 @@ from ..constants import (
 from ..logic.helpers.bbox import BBox
 
 
-def update_osd_metadata(batch_meta, frame_meta, persons, luggage_info: dict[int, str]):
+def update_osd_metadata(batch_meta, frame_meta, persons, luggage_info: dict[int, dict[str, str | int | None]]):
     """
     Updates the on-screen display (OSD) metadata for a given frame to
     reflect the state of luggage and their owners.
