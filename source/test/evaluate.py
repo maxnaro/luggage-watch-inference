@@ -29,6 +29,22 @@ from .event_logger import EventLogger
 from .metrics import evaluate_video, summarise, EvalSummary
 
 
+def _get_video_resolution(video_path: str) -> tuple[int, int] | None:
+    """Return (width, height) of a video file using GstPbutils.Discoverer."""
+    try:
+        gi.require_version("GstPbutils", "1.0")
+        from gi.repository import GstPbutils  # type: ignore
+
+        uri = f"file://{os.path.abspath(video_path)}"
+        discoverer = GstPbutils.Discoverer.new(5 * Gst.SECOND)
+        info = discoverer.discover_uri(uri)
+        for stream in info.get_video_streams():
+            return (stream.get_width(), stream.get_height())
+    except Exception:
+        pass
+    return None
+
+
 def _run_pipeline_for_video(
     video_path: str,
     logger: EventLogger,
@@ -177,8 +193,11 @@ def main():
             sys.exit(1)
 
         print(f"    Detected {len(logger.events)} abandonment event(s)")
+        video_size = _get_video_resolution(video_path)
         result = evaluate_video(
-            video_name, gt_entry, logger.events, args.temporal_tolerance
+            video_name, gt_entry, logger.events, args.temporal_tolerance,
+            muxer_size=(c.MUXER_WIDTH, c.MUXER_HEIGHT),
+            video_size=video_size,
         )
         results.append(result)
 

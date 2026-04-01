@@ -66,11 +66,23 @@ def compute_iou(box_a: tuple | list, box_b: tuple | list) -> float:
     return inter / union if union > 0 else 0.0
 
 
+def _scale_bbox(
+    bbox: tuple, muxer_w: int, muxer_h: int, video_w: int, video_h: int
+) -> tuple[float, float, float, float]:
+    """Scale a bbox from muxer resolution to original video resolution."""
+    x, y, w, h = bbox
+    sx = video_w / muxer_w
+    sy = video_h / muxer_h
+    return (x * sx, y * sy, w * sx, h * sy)
+
+
 def evaluate_video(
     video_name: str,
     gt_entry: dict,
     events: list,
     temporal_tolerance: int = 90,
+    muxer_size: tuple[int, int] = (640, 640),
+    video_size: tuple[int, int] | None = None,
 ) -> EvalResult:
     """
     Evaluate pipeline output for a single video against ground truth.
@@ -80,6 +92,9 @@ def evaluate_video(
         gt_entry: Ground truth dict with has_abandonment, true_abandon_frame, bag_roi.
         events: List of AbandonmentEvent from the EventLogger.
         temporal_tolerance: Allowed frame deviation for a true positive.
+        muxer_size: (width, height) of the DeepStream muxer output.
+        video_size: (width, height) of the original video. If provided,
+            detected bboxes are scaled to match the ground truth coordinate space.
     """
     expected = gt_entry["has_abandonment"]
     detected = len(events) > 0
@@ -96,7 +111,13 @@ def evaluate_video(
                 best_event = event
 
         if best_error <= temporal_tolerance:
-            iou = compute_iou(best_event.bbox, gt_entry["bag_roi"])
+            detected_bbox = best_event.bbox
+            if video_size is not None:
+                detected_bbox = _scale_bbox(
+                    detected_bbox, muxer_size[0], muxer_size[1],
+                    video_size[0], video_size[1],
+                )
+            iou = compute_iou(detected_bbox, gt_entry["bag_roi"])
             return EvalResult(
                 video=video_name,
                 expected_abandonment=True,
