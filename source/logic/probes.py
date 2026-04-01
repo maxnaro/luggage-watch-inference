@@ -3,9 +3,9 @@ from __future__ import annotations
 import pyds
 import gi
 
-from ui.overlay import update_osd_metadata
-from logic.process import process_frame
-import constants as c
+from ..ui.overlay import update_osd_metadata
+from .process import process_frame
+from .. import constants as c
 
 gi.require_version(c.GSTREAMER_PACKAGE, c.GSTREAMER_VERSION)
 from gi.repository import Gst  # type:ignore

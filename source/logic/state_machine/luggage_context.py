@@ -3,9 +3,9 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass, field
 
-from logic.state_machine.states import Attended, Unattended, Abandoned, State
-from logic.helpers.bbox import BBox
-from constants import (
+from .states import Attended, Unattended, Abandoned, State
+from ..helpers.bbox import BBox
+from ...constants import (
     MOVEMENT_THRESHOLD_PX,
     OWNER_RADIUS_PX,
 )  # TODO: replace these with some sort of config or args

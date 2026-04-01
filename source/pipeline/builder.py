@@ -4,7 +4,7 @@ import gi
 gi.require_version("Gst", "1.0")
 from gi.repository import Gst  # type: ignore
 
-import constants as c
+from .. import constants as c
 
 
 def build_pipeline(headless: bool = False):

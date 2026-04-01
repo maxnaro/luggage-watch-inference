@@ -4,13 +4,13 @@ import time
 from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
-from constants import (
+from ...constants import (
     ABANDONMENT_TIMEOUT_SECONDS,
 )  # TODO: replace this with some sort of config or args
 
 if TYPE_CHECKING:
     # HACK: avoid circular import for type hints, this is very ugly
-    from logic.state_machine.luggage_context import LuggageContext
+    from .luggage_context import LuggageContext
 
 
 class State(ABC):

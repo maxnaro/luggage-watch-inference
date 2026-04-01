@@ -1,12 +1,12 @@
 import gi
 
-import constants as c
+from . import constants as c
 
 gi.require_version(c.GSTREAMER_PACKAGE, c.GSTREAMER_VERSION)
 from gi.repository import Gst, GLib  # type: ignore
 
-from pipeline.builder import build_pipeline
-from logic.probes import tracker_src_pad_buffer_probe
+from .pipeline.builder import build_pipeline
+from .logic.probes import tracker_src_pad_buffer_probe
 
 
 def main():
@@ -34,9 +34,12 @@ def main():
                 loop.quit()
             case Gst.MessageType.ERROR:
                 err, debug = msg.parse_error()
-                print(f"{c.ERROR_PREFIX} from {msg.src.get_name()}: {err.message}")
-                if debug:
-                    print(f"{c.DEBUG_INFO_PREFIX}: {debug}")
+                if "Internal data stream error" in err.message:
+                    print(c.EOS_MESSAGE)
+                else:
+                    print(f"{c.ERROR_PREFIX} from {msg.src.get_name()}: {err.message}")
+                    if debug:
+                        print(f"{c.DEBUG_INFO_PREFIX}: {debug}")
                 loop.quit()
             case Gst.MessageType.WARNING:
                 err, debug = msg.parse_warning()

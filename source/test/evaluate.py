@@ -5,8 +5,8 @@ Runs each video listed in a ground truth JSON file through the DeepStream
 pipeline, collects abandonment events via the EventLogger, and computes
 detection accuracy, temporal error, and spatial (IoU) metrics.
 
-Usage (from inference/source/):
-    python -m test.evaluate --ground-truth test/ground_truth.json --video-dir /path/to/videos
+Usage (from project root):
+    python -m source.test.evaluate --ground-truth source/test/ground_truth.json --video-dir /path/to/videos
 
 Requires a running DeepStream environment (e.g. Jetson Orin Nano).
 """
@@ -21,12 +21,12 @@ import gi
 gi.require_version("Gst", "1.0")
 from gi.repository import Gst, GLib  # type: ignore
 
-import constants as c
-from pipeline.builder import build_pipeline
-from logic.probes import tracker_src_pad_buffer_probe, set_event_logger
-from logic.process import _contexts
-from test.event_logger import EventLogger
-from test.metrics import evaluate_video, summarise, EvalSummary
+from .. import constants as c
+from ..pipeline.builder import build_pipeline
+from ..logic.probes import tracker_src_pad_buffer_probe, set_event_logger
+from ..logic.process import _contexts
+from .event_logger import EventLogger
+from .metrics import evaluate_video, summarise, EvalSummary
 
 
 def _run_pipeline_for_video(
@@ -43,6 +43,8 @@ def _run_pipeline_for_video(
     original_uri = c.SOURCE_URI
     c.SOURCE_URI = f"file://{video_path}"
 
+    pipeline_error: str | None = None
+
     try:
         pipeline, elements = build_pipeline(headless=headless)
 
@@ -57,13 +59,17 @@ def _run_pipeline_for_video(
         bus.add_signal_watch()
 
         def on_bus_message(bus, msg):
+            nonlocal pipeline_error
             match msg.type:
                 case Gst.MessageType.EOS:
                     loop.quit()
                 case Gst.MessageType.ERROR:
                     err, debug = msg.parse_error()
-                    print(f"  ERROR: {err.message}", file=sys.stderr)
-                    loop.quit()
+                    if "Internal data stream error" in err.message:
+                        loop.quit()
+                    else:
+                        pipeline_error = err.message
+                        loop.quit()
 
         bus.connect("message", on_bus_message)
 
@@ -76,6 +82,9 @@ def _run_pipeline_for_video(
     finally:
         c.SOURCE_URI = original_uri
         set_event_logger(None)
+
+    if pipeline_error is not None:
+        raise RuntimeError(f"Pipeline error: {pipeline_error}")
 
 
 def _print_summary(summary: EvalSummary) -> None:
@@ -152,7 +161,11 @@ def main():
             continue
 
         print(f"  Running {video_name} ...")
-        _run_pipeline_for_video(video_path, logger, headless=args.headless)
+        try:
+            _run_pipeline_for_video(video_path, logger, headless=args.headless)
+        except RuntimeError as e:
+            print(f"  ABORT: {e}", file=sys.stderr)
+            sys.exit(1)
 
         print(f"    Detected {len(logger.events)} abandonment event(s)")
         result = evaluate_video(

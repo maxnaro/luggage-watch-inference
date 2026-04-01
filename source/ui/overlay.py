@@ -1,6 +1,6 @@
 import pyds
 
-from constants import (
+from ..constants import (
     COLORS,
     UNTRACKED_OBJECT_ID,
     LUGGAGE_CLASS_ID,
@@ -8,7 +8,7 @@ from constants import (
     DISPLAY_META_LIMIT,
     OWNER_RADIUS_PX
 )
-from logic.helpers.bbox import BBox
+from ..logic.helpers.bbox import BBox
 
 
 def update_osd_metadata(batch_meta, frame_meta, persons, luggage_info: dict[int, str]):
