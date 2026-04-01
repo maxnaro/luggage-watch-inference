@@ -138,6 +138,7 @@ COPY --from=parser-builder /tmp/libnvdsinfer_custom_impl_Yolo.so /workspace/infe
 RUN wget -q -O /workspace/inference/model/resnet50_market1501.etlt ${REID_MODEL_URL}
 
 RUN ln -sf /workspace/inference/model/model_b1_gpu0_fp16.engine /workspace/inference/model_b1_gpu0_fp16.engine
+RUN ln -sf /workspace/inference/model/model_b1_gpu0_fp32.engine /workspace/inference/model_b1_gpu0_fp32.engine
 
 ENV PYTHONPATH=/workspace/inference/source
 

@@ -68,7 +68,7 @@ ReID:
   reidFeatureSize: 256    # Size of reid feature
   reidHistorySize: 100    # Max number of reid features kept for one object
   inferDims: [3, 256, 128]    # Reid network input dimension CHW or HWC based on inputOrder
-  networkMode: 1    # Reid network inference precision mode among {fp32=0, fp16=1, int8=2 }
+  networkMode: 0    # Reid network inference precision mode among {fp32=0, fp16=1, int8=2 }
 
   # [Input Preprocessing]
   inputOrder: 0    # Reid network input order among { NCHW=0, NHWC=1 }. Batch will be converted to the specified order before reid input.
@@ -83,4 +83,4 @@ ReID:
   # [Paths and Names]
   tltEncodedModel: "model/resnet50_market1501.etlt" # NVIDIA TAO model path
   tltModelKey: "nvidia_tao" # NVIDIA TAO model key
-  modelEngineFile: "model/resnet50_market1501.etlt_b100_gpu0_fp16.engine" # Engine file path
+  modelEngineFile: "model/resnet50_market1501.etlt_b100_gpu0_fp32.engine" # Engine file path
