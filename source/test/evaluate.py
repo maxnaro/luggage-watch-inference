@@ -24,7 +24,7 @@ from gi.repository import Gst, GLib  # type: ignore
 from .. import constants as c
 from ..pipeline.builder import build_pipeline
 from ..logic.probes import tracker_src_pad_buffer_probe, set_event_logger
-from ..logic.process import _contexts
+from ..logic.process import reset_contexts
 from .event_logger import EventLogger
 from .metrics import evaluate_video, summarise, EvalSummary
 
@@ -37,7 +37,7 @@ def _run_pipeline_for_video(
 ) -> None:
     """Run the DeepStream pipeline on a single video and collect events."""
     logger.reset()
-    _contexts.clear()
+    reset_contexts()
 
     # Wire the logger into the existing probe
     set_event_logger(logger)

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 
 @dataclass
@@ -38,7 +38,7 @@ class EventLogger:
     def log_frame(
         self,
         frame_num: int,
-        luggage_info: dict[int, dict[str, str]],
+        luggage_info: dict[int, dict[str, str | int | None]],
         luggage_bboxes: dict[int, tuple[float, float, float, float]],
     ) -> None:
         """
