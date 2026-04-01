@@ -5,10 +5,7 @@ from dataclasses import dataclass, field
 
 from .states import Attended, Unattended, Abandoned, State
 from ..helpers.bbox import BBox
-from ...constants import (
-    MOVEMENT_THRESHOLD_PX,
-    OWNER_RADIUS_PX,
-)  # TODO: replace these with some sort of config or args
+from ... import constants as c
 
 
 @dataclass
@@ -32,7 +29,7 @@ class LuggageContext:
         is_moving = True
         if self.last_bbox is not None:
             is_moving = (
-                luggage_bbox.distance_to(self.last_bbox) >= MOVEMENT_THRESHOLD_PX
+                luggage_bbox.distance_to(self.last_bbox) >= c.MOVEMENT_THRESHOLD_PX
             )
         self.last_bbox = luggage_bbox
 
@@ -40,7 +37,7 @@ class LuggageContext:
         if self.owner_id is not None and self.owner_id in person_bboxes:
             is_attended = (
                 luggage_bbox.distance_to(person_bboxes[self.owner_id])
-                <= OWNER_RADIUS_PX
+                <= c.OWNER_RADIUS_PX
             )
         elif self.owner_id is None:
             self.owner_id = self._get_nearest_person_id(luggage_bbox, person_bboxes)
@@ -57,7 +54,7 @@ class LuggageContext:
         nearest_distance = float("inf")
         for person_id, person_bbox in person_bboxes.items():
             distance = luggage_bbox.distance_to(person_bbox)
-            if distance < nearest_distance and distance <= OWNER_RADIUS_PX:
+            if distance < nearest_distance and distance <= c.OWNER_RADIUS_PX:
                 nearest_distance = distance
                 nearest_id = person_id
         return nearest_id

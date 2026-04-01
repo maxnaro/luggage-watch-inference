@@ -30,7 +30,10 @@ from .metrics import evaluate_video, summarise, EvalSummary
 
 
 def _run_pipeline_for_video(
-    video_path: str, logger: EventLogger, headless: bool = False
+    video_path: str,
+    logger: EventLogger,
+    gt_entry: dict,
+    headless: bool = False,
 ) -> None:
     """Run the DeepStream pipeline on a single video and collect events."""
     logger.reset()
@@ -39,9 +42,13 @@ def _run_pipeline_for_video(
     # Wire the logger into the existing probe
     set_event_logger(logger)
 
-    # Override the source URI for this video
+    # Override constants for this video
     original_uri = c.SOURCE_URI
+    original_radius = c.OWNER_RADIUS_PX
+    original_timeout = c.ABANDONMENT_TIMEOUT_SECONDS
     c.SOURCE_URI = f"file://{video_path}"
+    c.OWNER_RADIUS_PX = gt_entry.get("radius_px", original_radius)
+    c.ABANDONMENT_TIMEOUT_SECONDS = gt_entry.get("threshold_s", original_timeout)
 
     pipeline_error: str | None = None
 
@@ -81,6 +88,8 @@ def _run_pipeline_for_video(
             pipeline.set_state(Gst.State.NULL)
     finally:
         c.SOURCE_URI = original_uri
+        c.OWNER_RADIUS_PX = original_radius
+        c.ABANDONMENT_TIMEOUT_SECONDS = original_timeout
         set_event_logger(None)
 
     if pipeline_error is not None:
@@ -160,9 +169,9 @@ def main():
             print(f"  SKIP {video_name} (file not found)", file=sys.stderr)
             continue
 
-        print(f"  Running {video_name} ...")
+        print(f"  Running {video_name} (radius={gt_entry.get('radius_px')}px, timeout={gt_entry.get('threshold_s')}s) ...")
         try:
-            _run_pipeline_for_video(video_path, logger, headless=args.headless)
+            _run_pipeline_for_video(video_path, logger, gt_entry, headless=args.headless)
         except RuntimeError as e:
             print(f"  ABORT: {e}", file=sys.stderr)
             sys.exit(1)
