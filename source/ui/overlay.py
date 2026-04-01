@@ -32,7 +32,7 @@ def update_osd_metadata(batch_meta, frame_meta, persons, luggage_info: dict[int,
             break
 
         if obj_meta.object_id != UNTRACKED_OBJECT_ID:
-            text = f"{obj_meta.obj_label} ID:{obj_meta.object_id}"
+            text = f"{obj_meta.obj_label} ID:{obj_meta.object_id} {obj_meta.confidence:.2f}"
             box_color = COLORS.get(obj_meta.obj_label, COLORS["default"])
 
             if obj_meta.class_id == LUGGAGE_CLASS_ID:
