@@ -1,13 +1,6 @@
 import pyds
 
-from ..constants import (
-    COLORS,
-    UNTRACKED_OBJECT_ID,
-    LUGGAGE_CLASS_ID,
-    PERSON_CLASS_ID,
-    DISPLAY_META_LIMIT,
-    OWNER_RADIUS_PX
-)
+from .. import constants as c
 from ..logic.helpers.bbox import BBox
 
 
@@ -31,18 +24,18 @@ def update_osd_metadata(batch_meta, frame_meta, persons, luggage_info: dict[int,
         except StopIteration:
             break
 
-        if obj_meta.object_id != UNTRACKED_OBJECT_ID:
+        if obj_meta.object_id != c.UNTRACKED_OBJECT_ID:
             text = f"{obj_meta.obj_label} ID:{obj_meta.object_id} {obj_meta.confidence:.2f}"
-            box_color = COLORS.get(obj_meta.obj_label, COLORS["default"])
+            box_color = c.COLORS.get(obj_meta.obj_label, c.COLORS["default"])
 
-            if obj_meta.class_id == LUGGAGE_CLASS_ID:
+            if obj_meta.class_id == c.LUGGAGE_CLASS_ID:
                 info = luggage_info.get(
                     obj_meta.object_id, {"state": "Attended", "owner_id": None}
                 )
                 state = info.get("state")
                 owner_id = info.get("owner_id")
                 text += f" ({state})"
-                box_color = COLORS.get(state, box_color)
+                box_color = c.COLORS.get(state, box_color)
 
                 if state == "Attended" and owner_id in person_centres:
                     luggage_centre = BBox(obj_meta.rect_params).centre
@@ -76,8 +69,8 @@ def _draw_ownership_overlay(
     person_centre: tuple[float, float],
 ) -> pyds.NvDsDisplayMeta:
     if (
-        display_meta.num_lines == DISPLAY_META_LIMIT
-        or display_meta.num_circles == DISPLAY_META_LIMIT
+        display_meta.num_lines == c.DISPLAY_META_LIMIT
+        or display_meta.num_circles == c.DISPLAY_META_LIMIT
     ):
         pyds.nvds_add_display_meta_to_frame(frame_meta, display_meta)
         display_meta = pyds.nvds_acquire_display_meta_from_pool(batch_meta)
@@ -93,7 +86,7 @@ def _draw_ownership_overlay(
 
     circle = display_meta.circle_params[display_meta.num_circles]
     circle.xc, circle.yc = int(luggage_centre[0]), int(luggage_centre[1])
-    circle.radius = int(OWNER_RADIUS_PX)
+    circle.radius = int(c.OWNER_RADIUS_PX)
     circle.has_bg_color = 1
     circle.bg_color.set(0.0, 1.0, 0.0, 0.2) 
     display_meta.num_circles += 1

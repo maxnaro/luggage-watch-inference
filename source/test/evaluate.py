@@ -62,7 +62,7 @@ def _run_pipeline_for_video(
     original_uri = c.SOURCE_URI
     original_radius = c.OWNER_RADIUS_PX
     original_timeout = c.ABANDONMENT_TIMEOUT_SECONDS
-    c.SOURCE_URI = f"file://{video_path}"
+    c.SOURCE_URI = f"file://{os.path.abspath(video_path)}"
     c.OWNER_RADIUS_PX = gt_entry.get("radius_px", original_radius)
     c.ABANDONMENT_TIMEOUT_SECONDS = gt_entry.get("threshold_s", original_timeout)
 

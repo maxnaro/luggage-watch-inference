@@ -10,7 +10,7 @@ class EvalResult:
     video: str
     expected_abandonment: bool
     detected_abandonment: bool
-    frame_error: int | None = None  # absolute frame difference (TP only)
+    frame_error: int | None = None  # absolute frame difference, if computed
     iou: float | None = None  # bounding box IoU (TP only)
 
 
@@ -100,7 +100,7 @@ def evaluate_video(
     detected = len(events) > 0
 
     if expected and detected:
-        # Match the earliest detected event within temporal tolerance
+        # Match the detected event closest to the ground truth frame
         best_event = None
         best_error = float("inf")
 
