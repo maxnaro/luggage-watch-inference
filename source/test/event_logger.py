@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from .. import constants as c
+
 
 @dataclass
 class AbandonmentEvent:
@@ -29,11 +31,60 @@ class EventLogger:
         self._prev_states: dict[int, str] = {}
         self.events: list[AbandonmentEvent] = []
         self._abandoned_ids: set[int] = set()
+        self._recent_events: list[AbandonmentEvent] = []
 
     def reset(self) -> None:
         self._prev_states.clear()
         self.events.clear()
         self._abandoned_ids.clear()
+        self._recent_events.clear()
+
+    @staticmethod
+    def _bbox_iou(
+        box_a: tuple[float, float, float, float],
+        box_b: tuple[float, float, float, float],
+    ) -> float:
+        ax1, ay1 = box_a[0], box_a[1]
+        ax2, ay2 = ax1 + box_a[2], ay1 + box_a[3]
+        bx1, by1 = box_b[0], box_b[1]
+        bx2, by2 = bx1 + box_b[2], by1 + box_b[3]
+
+        ix1, iy1 = max(ax1, bx1), max(ay1, by1)
+        ix2, iy2 = min(ax2, bx2), min(ay2, by2)
+        inter = max(0.0, ix2 - ix1) * max(0.0, iy2 - iy1)
+        union = box_a[2] * box_a[3] + box_b[2] * box_b[3] - inter
+        return inter / union if union > 0 else 0.0
+
+    @staticmethod
+    def _bbox_center_distance(
+        box_a: tuple[float, float, float, float],
+        box_b: tuple[float, float, float, float],
+    ) -> float:
+        ax = box_a[0] + box_a[2] / 2
+        ay = box_a[1] + box_a[3] / 2
+        bx = box_b[0] + box_b[2] / 2
+        by = box_b[1] + box_b[3] / 2
+        return ((bx - ax) ** 2 + (by - ay) ** 2) ** 0.5
+
+    def _is_duplicate_event(
+        self,
+        frame_num: int,
+        bbox: tuple[float, float, float, float],
+    ) -> bool:
+        min_frame = frame_num - c.ABANDONED_EVENT_DEDUP_FRAMES
+        self._recent_events = [
+            event for event in self._recent_events if event.frame_num >= min_frame
+        ]
+
+        for event in self._recent_events:
+            iou = self._bbox_iou(event.bbox, bbox)
+            distance = self._bbox_center_distance(event.bbox, bbox)
+            if (
+                iou >= c.ABANDONED_EVENT_DEDUP_IOU
+                and distance <= c.ABANDONED_EVENT_DEDUP_DISTANCE_PX
+            ):
+                return True
+        return False
 
     def log_frame(
         self,
@@ -60,7 +111,10 @@ class EventLogger:
                 and luggage_id not in self._abandoned_ids
             ):
                 bbox = luggage_bboxes.get(luggage_id, (0, 0, 0, 0))
-                self.events.append(AbandonmentEvent(luggage_id, frame_num, bbox))
+                event = AbandonmentEvent(luggage_id, frame_num, bbox)
+                if not self._is_duplicate_event(frame_num, bbox):
+                    self.events.append(event)
+                    self._recent_events.append(event)
                 self._abandoned_ids.add(luggage_id)
 
             self._prev_states[luggage_id] = state

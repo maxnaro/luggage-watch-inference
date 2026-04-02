@@ -1,5 +1,25 @@
 import os
 
+
+def _env_int(name: str, default: int) -> int:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    try:
+        return int(value)
+    except ValueError:
+        return default
+
+
+def _env_float(name: str, default: float) -> float:
+    value = os.getenv(name)
+    if value is None:
+        return default
+    try:
+        return float(value)
+    except ValueError:
+        return default
+
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 CONFIG_DIR = os.path.join(ROOT_DIR, "config")
 
@@ -84,9 +104,30 @@ LUGGAGE_CLASS_ID = 1
 # Tracking parameters # TODO: replace these with some sort of config or args
 ABANDONMENT_TIMEOUT_SECONDS = 30
 OWNER_RADIUS_PX = 200
-MOVEMENT_THRESHOLD_PX = 10
-SPATIAL_TOLERANCE_PX = 50
-CONTEXT_TTL_SECONDS = 5
+MOVEMENT_THRESHOLD_PX = _env_int("LW_MOVEMENT_THRESHOLD_PX", 25)
+SPATIAL_TOLERANCE_PX = _env_int("LW_SPATIAL_TOLERANCE_PX", 100)
+CONTEXT_TTL_SECONDS = _env_float("LW_CONTEXT_TTL_SECONDS", 12.0)
+UNATTENDED_RESET_CONFIRM_FRAMES = _env_int(
+    "LW_UNATTENDED_RESET_CONFIRM_FRAMES", 3
+)
+OWNER_ASSIGN_CONFIRM_FRAMES = _env_int("LW_OWNER_ASSIGN_CONFIRM_FRAMES", 3)
+OWNER_REASSIGN_CONFIRM_FRAMES = _env_int(
+    "LW_OWNER_REASSIGN_CONFIRM_FRAMES", 3
+)
+OWNER_LOST_GRACE_SECONDS = _env_float("LW_OWNER_LOST_GRACE_SECONDS", 2.5)
+OWNER_REASSIGN_MAX_SHIFT_PX = _env_int(
+    "LW_OWNER_REASSIGN_MAX_SHIFT_PX", 120
+)
+UNATTENDED_TIMER_RESUME_WINDOW_SECONDS = _env_float(
+    "LW_UNATTENDED_TIMER_RESUME_WINDOW_SECONDS", 6.0
+)
+ABANDONED_EVENT_DEDUP_FRAMES = _env_int(
+    "LW_ABANDONED_EVENT_DEDUP_FRAMES", 450
+)
+ABANDONED_EVENT_DEDUP_IOU = _env_float("LW_ABANDONED_EVENT_DEDUP_IOU", 0.2)
+ABANDONED_EVENT_DEDUP_DISTANCE_PX = _env_int(
+    "LW_ABANDONED_EVENT_DEDUP_DISTANCE_PX", 100
+)
 
 COLORS = {
     "person": (0.0, 0.5, 1.0, 1.0),  # Blue
