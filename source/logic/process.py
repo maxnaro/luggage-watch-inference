@@ -12,7 +12,9 @@ def reset_contexts() -> None:
     _contexts.clear()
 
 
-def process_frame(persons: list, luggage_items: list) -> dict[int, dict[str, str]]:
+def process_frame(
+    persons: list, luggage_items: list
+) -> dict[int, dict[str, str | int | None]]:
     """
     Evaluates the spatial relationship between persons and luggage.
     Updates the state of each luggage item (Attended -> Unattended -> Abandoned).
@@ -23,40 +25,46 @@ def process_frame(persons: list, luggage_items: list) -> dict[int, dict[str, str
         rect = person.rect_params
         person_bboxes[person.object_id] = BBox(rect)
 
-    seen_ids: set[int] = set()
-    results: dict[int, dict[str, str]] = {}  # luggage_id -> {"state": state_name, "owner_id": owner_id}
+    frame_ids: set[int] = {item.object_id for item in luggage_items}
+    results: dict[int, dict[str, str | int | None]] = {}  # luggage_id -> {"state": state_name, "owner_id": owner_id}
 
     for luggage in luggage_items:
         luggage_id = luggage.object_id
-        seen_ids.add(luggage_id)
         rect = luggage.rect_params
         luggage_bbox = BBox(rect)
 
-        _handle_tracker_flip(luggage_id, luggage_bbox, seen_ids)
+        _handle_tracker_flip(luggage_id, luggage_bbox, frame_ids)
 
         results[luggage_id] = _contexts[luggage_id].update(luggage_bbox, person_bboxes)
 
-    _handle_tracker_loss(seen_ids)
+    _handle_tracker_loss(frame_ids)
 
     return results
 
 
 def _handle_tracker_flip(
-    luggage_id: int, luggage_bbox: BBox, seen_ids: set[int]
+    luggage_id: int, luggage_bbox: BBox, frame_ids: set[int]
 ) -> None:
     """
     Handles tracker ID flips by transferring context from the old ID to the new ID.
     """
     if luggage_id not in _contexts:
         matched_id = None
+        best_distance = float("inf")
         for old_id, context in _contexts.items():
+            if old_id == luggage_id or old_id in frame_ids:
+                continue
+
+            if context.last_bbox is None:
+                continue
+
+            distance = luggage_bbox.distance_to(context.last_bbox)
             if (
-                old_id not in seen_ids
-                and context.last_bbox is not None
-                and luggage_bbox.distance_to(context.last_bbox) < SPATIAL_TOLERANCE_PX
+                distance < SPATIAL_TOLERANCE_PX
+                and distance < best_distance
             ):
                 matched_id = old_id
-                break
+                best_distance = distance
 
         if matched_id is not None:
             _contexts[luggage_id] = _contexts.pop(matched_id)
