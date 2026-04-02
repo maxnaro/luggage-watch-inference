@@ -129,7 +129,7 @@ def _print_summary(summary: EvalSummary) -> None:
             status = "TN"
         else:
             status = f"FP+FN  frame_err={r.frame_error} (outside tolerance)"
-        print(f"  {r.video:<16s} {status}")
+        print(f"  {r.video:<24s} {status}")
 
     print("-" * 60)
     print(f"  TP={summary.tp}  FP={summary.fp}  FN={summary.fn}  TN={summary.tn}")
@@ -179,27 +179,29 @@ def main():
     logger = EventLogger()
     results = []
 
-    for video_name, gt_entry in sorted(ground_truth.items()):
+    for video_name, gt_events in sorted(ground_truth.items()):
         video_path = os.path.join(args.video_dir, video_name)
         if not os.path.isfile(video_path):
             print(f"  SKIP {video_name} (file not found)", file=sys.stderr)
             continue
 
-        print(f"  Running {video_name} (radius={gt_entry.get('radius_px')}px, timeout={gt_entry.get('threshold_s')}s) ...")
+        # HACK: use parameters from the first event for pipeline configuration
+        first_event = gt_events[0] if gt_events else {}
+        print(f"  Running {video_name} ({len(gt_events)} expected event(s), radius={first_event.get('radius_px')}px, timeout={first_event.get('threshold_s')}s) ...")
         try:
-            _run_pipeline_for_video(video_path, logger, gt_entry, headless=args.headless)
+            _run_pipeline_for_video(video_path, logger, first_event, headless=args.headless)
         except RuntimeError as e:
             print(f"  ABORT: {e}", file=sys.stderr)
             sys.exit(1)
 
         print(f"    Detected {len(logger.events)} abandonment event(s)")
         video_size = _get_video_resolution(video_path)
-        result = evaluate_video(
-            video_name, gt_entry, logger.events, args.temporal_tolerance,
+        eval_results = evaluate_video(
+            video_name, gt_events, logger.events, args.temporal_tolerance,
             muxer_size=(c.MUXER_WIDTH, c.MUXER_HEIGHT),
             video_size=video_size,
         )
-        results.append(result)
+        results.extend(eval_results)
 
     summary = summarise(results)
     _print_summary(summary)
