@@ -10,6 +10,7 @@ class EvalResult:
     video: str
     expected_abandonment: bool
     detected_abandonment: bool
+    detected_frame: int | None = None  # detected frame number, mainly for FP reporting
     frame_error: int | None = None  # absolute frame difference, if computed
     iou: float | None = None  # bounding box IoU (TP only)
 
@@ -78,67 +79,112 @@ def _scale_bbox(
 
 def evaluate_video(
     video_name: str,
-    gt_entry: dict,
-    events: list,
+    gt_events: list[dict],
+    detected_events: list,
     temporal_tolerance: int = 90,
     muxer_size: tuple[int, int] = (640, 640),
     video_size: tuple[int, int] | None = None,
-) -> EvalResult:
+) -> list[EvalResult]:
     """
     Evaluate pipeline output for a single video against ground truth.
 
+    Matches detected abandonment events to ground truth events and returns
+    evaluation results for each ground truth event.
+
     Args:
         video_name: Filename of the video.
-        gt_entry: Ground truth dict with has_abandonment, true_abandon_frame, bag_roi.
-        events: List of AbandonmentEvent from the EventLogger.
+        gt_events: List of ground truth dicts, each with has_abandonment,
+            true_abandon_frame, bag_roi, etc.
+        detected_events: List of AbandonmentEvent from the EventLogger.
         temporal_tolerance: Allowed frame deviation for a true positive.
         muxer_size: (width, height) of the DeepStream muxer output.
         video_size: (width, height) of the original video. If provided,
             detected bboxes are scaled to match the ground truth coordinate space.
-    """
-    expected = gt_entry["has_abandonment"]
-    detected = len(events) > 0
 
-    if expected and detected:
-        # Match the detected event closest to the ground truth frame
+    Returns:
+        List of EvalResult objects, one per ground truth event.
+    """
+    results = []
+
+    # Track which detected events have been matched
+    matched_detected_indices = set()
+
+    for gt_idx, gt_entry in enumerate(gt_events):
+        expected = gt_entry.get("has_abandonment", True)
+
+        # Find the best matching detected event for this ground truth event
         best_event = None
         best_error = float("inf")
+        best_detected_idx = None
 
-        for event in events:
-            error = abs(event.frame_num - gt_entry["true_abandon_frame"])
-            if error < best_error:
-                best_error = error
-                best_event = event
+        if expected:
+            gt_frame = gt_entry["true_abandon_frame"]
+            for det_idx, event in enumerate(detected_events):
+                if det_idx in matched_detected_indices:
+                    continue  # Already matched to another ground truth event
+                error = abs(event.frame_num - gt_frame)
+                if error < best_error:
+                    best_error = error
+                    best_event = event
+                    best_detected_idx = det_idx
 
-        if best_error <= temporal_tolerance:
-            detected_bbox = best_event.bbox
-            if video_size is not None:
-                detected_bbox = _scale_bbox(
-                    detected_bbox, muxer_size[0], muxer_size[1],
-                    video_size[0], video_size[1],
+        detected = best_event is not None
+
+        if expected and detected:
+            if best_error <= temporal_tolerance:
+                matched_detected_indices.add(best_detected_idx)
+                detected_bbox = best_event.bbox
+                if video_size is not None:
+                    detected_bbox = _scale_bbox(
+                        detected_bbox, muxer_size[0], muxer_size[1],
+                        video_size[0], video_size[1],
+                    )
+                iou = compute_iou(detected_bbox, gt_entry["bag_roi"])
+                results.append(
+                    EvalResult(
+                        video=f"{video_name}[event_{gt_idx}]",
+                        expected_abandonment=True,
+                        detected_abandonment=True,
+                        detected_frame=best_event.frame_num,
+                        frame_error=int(best_error),
+                        iou=iou,
+                    )
                 )
-            iou = compute_iou(detected_bbox, gt_entry["bag_roi"])
-            return EvalResult(
-                video=video_name,
-                expected_abandonment=True,
-                detected_abandonment=True,
-                frame_error=int(best_error),
-                iou=iou,
-            )
+            else:
+                # Detected, but too far from the true frame — counts as FP + FN
+                matched_detected_indices.add(best_detected_idx)
+                results.append(
+                    EvalResult(
+                        video=f"{video_name}[event_{gt_idx}]",
+                        expected_abandonment=True,
+                        detected_abandonment=True,
+                        detected_frame=best_event.frame_num,
+                        frame_error=int(best_error),
+                    )
+                )
         else:
-            # Detected, but too far from the true frame — counts as FP + FN
-            return EvalResult(
-                video=video_name,
-                expected_abandonment=True,
-                detected_abandonment=True,
-                frame_error=int(best_error),
+            # No matching detected event or not expected
+            results.append(
+                EvalResult(
+                    video=f"{video_name}[event_{gt_idx}]",
+                    expected_abandonment=expected,
+                    detected_abandonment=detected,
+                )
             )
 
-    return EvalResult(
-        video=video_name,
-        expected_abandonment=expected,
-        detected_abandonment=detected,
-    )
+    # Report any unmatched detected events as false positives
+    for det_idx, event in enumerate(detected_events):
+        if det_idx not in matched_detected_indices:
+            results.append(
+                EvalResult(
+                    video=f"{video_name}[false_positive]",
+                    expected_abandonment=False,
+                    detected_abandonment=True,
+                    detected_frame=event.frame_num,
+                )
+            )
+
+    return results
 
 
 def summarise(results: list[EvalResult]) -> EvalSummary:
