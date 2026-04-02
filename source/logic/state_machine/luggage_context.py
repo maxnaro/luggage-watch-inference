@@ -17,11 +17,27 @@ class LuggageContext:
     state: State = field(default_factory=Attended)
     last_bbox: BBox | None = None
     last_seen: float = field(default_factory=time.monotonic)
+    owner_last_bbox: BBox | None = None
+    owner_missing_since: float | None = None
+    _owner_candidate_id: int | None = field(default=None, init=False, repr=False)
+    _owner_candidate_frames: int = field(default=0, init=False, repr=False)
+    _unattended_reset_frames: int = field(default=0, init=False, repr=False)
 
     def transition_to(self, new_state: State) -> None:
+        if self.state.name != new_state.name:
+            self._unattended_reset_frames = 0
         self.state = new_state
 
-    def update(self, luggage_bbox: BBox, person_bboxes: dict[int, BBox]) -> dict[str, str | int | None]:
+    @property
+    def unattended_reset_confirmed(self) -> bool:
+        return (
+            self._unattended_reset_frames
+            >= c.UNATTENDED_RESET_CONFIRM_FRAMES
+        )
+
+    def update(
+        self, luggage_bbox: BBox, person_bboxes: dict[int, BBox]
+    ) -> dict[str, str | int | None]:
         """
         Called once per frame for a given luggage item.
         Returns the name of the current state and `owner_id` after evaluation.
@@ -33,18 +49,118 @@ class LuggageContext:
             )
         self.last_bbox = luggage_bbox
 
-        is_attended = False
-        if self.owner_id is not None and self.owner_id in person_bboxes:
-            is_attended = (
-                luggage_bbox.distance_to(person_bboxes[self.owner_id])
-                <= c.OWNER_RADIUS_PX
-            )
-        elif self.owner_id is None:
-            self.owner_id = self._get_nearest_person_id(luggage_bbox, person_bboxes)
-            is_attended = self.owner_id is not None
+        is_attended = self._evaluate_owner_attendance(luggage_bbox, person_bboxes)
+
+        if self.state.name == "Unattended":
+            if is_attended or is_moving:
+                self._unattended_reset_frames += 1
+            else:
+                self._unattended_reset_frames = 0
+        else:
+            self._unattended_reset_frames = 0
 
         self.state.evaluate(self, is_attended, is_moving)
         return {"state": self.state.name, "owner_id": self.owner_id}
+
+    def _evaluate_owner_attendance(
+        self, luggage_bbox: BBox, person_bboxes: dict[int, BBox]
+    ) -> bool:
+        if self.owner_id is None:
+            return self._attempt_initial_owner_assignment(
+                luggage_bbox, person_bboxes
+            )
+
+        if self.owner_id in person_bboxes:
+            owner_bbox = person_bboxes[self.owner_id]
+            self.owner_last_bbox = owner_bbox
+            self.owner_missing_since = None
+            self._reset_owner_candidate()
+            return luggage_bbox.distance_to(owner_bbox) <= c.OWNER_RADIUS_PX
+
+        # Keep owner fixed during brief tracker losses and only allow strict
+        # reassociation to preserve ownership consistency.
+        now = time.monotonic()
+        if self.owner_missing_since is None:
+            self.owner_missing_since = now
+
+        if self._attempt_owner_reassignment(luggage_bbox, person_bboxes):
+            owner_bbox = person_bboxes[self.owner_id]
+            return luggage_bbox.distance_to(owner_bbox) <= c.OWNER_RADIUS_PX
+
+        return (now - self.owner_missing_since) <= c.OWNER_LOST_GRACE_SECONDS
+
+    def _attempt_initial_owner_assignment(
+        self, luggage_bbox: BBox, person_bboxes: dict[int, BBox]
+    ) -> bool:
+        candidate_id = self._get_nearest_person_id(luggage_bbox, person_bboxes)
+        if not self._confirm_owner_candidate(
+            candidate_id, c.OWNER_ASSIGN_CONFIRM_FRAMES
+        ):
+            return False
+
+        self.owner_id = candidate_id
+        self.owner_last_bbox = person_bboxes[candidate_id]
+        self.owner_missing_since = None
+        self._reset_owner_candidate()
+        return True
+
+    def _attempt_owner_reassignment(
+        self, luggage_bbox: BBox, person_bboxes: dict[int, BBox]
+    ) -> bool:
+        candidate_id = self._get_reassignment_candidate(
+            luggage_bbox, person_bboxes
+        )
+        if not self._confirm_owner_candidate(
+            candidate_id, c.OWNER_REASSIGN_CONFIRM_FRAMES
+        ):
+            return False
+
+        self.owner_id = candidate_id
+        self.owner_last_bbox = person_bboxes[candidate_id]
+        self.owner_missing_since = None
+        self._reset_owner_candidate()
+        return True
+
+    def _get_reassignment_candidate(
+        self, luggage_bbox: BBox, person_bboxes: dict[int, BBox]
+    ) -> int | None:
+        if self.owner_last_bbox is None:
+            return None
+
+        nearest_id = None
+        nearest_owner_shift = float("inf")
+        for person_id, person_bbox in person_bboxes.items():
+            if luggage_bbox.distance_to(person_bbox) > c.OWNER_RADIUS_PX:
+                continue
+
+            owner_shift = person_bbox.distance_to(self.owner_last_bbox)
+            if owner_shift > c.OWNER_REASSIGN_MAX_SHIFT_PX:
+                continue
+
+            if owner_shift < nearest_owner_shift:
+                nearest_owner_shift = owner_shift
+                nearest_id = person_id
+
+        return nearest_id
+
+    def _confirm_owner_candidate(
+        self, candidate_id: int | None, required_frames: int
+    ) -> bool:
+        if candidate_id is None:
+            self._reset_owner_candidate()
+            return False
+
+        if self._owner_candidate_id == candidate_id:
+            self._owner_candidate_frames += 1
+        else:
+            self._owner_candidate_id = candidate_id
+            self._owner_candidate_frames = 1
+
+        return self._owner_candidate_frames >= required_frames
+
+    def _reset_owner_candidate(self) -> None:
+        self._owner_candidate_id = None
+        self._owner_candidate_frames = 0
 
     @staticmethod
     def _get_nearest_person_id(

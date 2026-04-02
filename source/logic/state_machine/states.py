@@ -16,8 +16,12 @@ class State(ABC):
     @abstractmethod
     def name(self) -> str: ...
     
-    def __eq__(self, other: str):
-        return self.name() == other
+    def __eq__(self, other: object) -> bool:
+        if isinstance(other, State):
+            return self.name == other.name
+        if isinstance(other, str):
+            return self.name == other
+        return False
 
     @abstractmethod
     def evaluate(
@@ -55,7 +59,7 @@ class Unattended(State):
     def evaluate(
         self, context: LuggageContext, is_attended: bool, is_moving: bool
     ) -> None:
-        if is_attended or is_moving:
+        if context.unattended_reset_confirmed:
             context.transition_to(Attended())
         elif self.elapsed_time >= self._abandonment_timeout:
             context.transition_to(Abandoned())
