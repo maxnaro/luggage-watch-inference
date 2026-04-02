@@ -124,7 +124,10 @@ def _print_summary(summary: EvalSummary) -> None:
         elif r.expected_abandonment and not r.detected_abandonment:
             status = "FN  (missed)"
         elif not r.expected_abandonment and r.detected_abandonment:
-            status = "FP  (false alarm)"
+            if r.detected_frame is not None:
+                status = f"FP  (false alarm at frame {r.detected_frame})"
+            else:
+                status = "FP  (false alarm)"
         elif not r.expected_abandonment:
             status = "TN"
         else:

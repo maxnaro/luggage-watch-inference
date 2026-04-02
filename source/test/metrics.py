@@ -10,6 +10,7 @@ class EvalResult:
     video: str
     expected_abandonment: bool
     detected_abandonment: bool
+    detected_frame: int | None = None  # detected frame number, mainly for FP reporting
     frame_error: int | None = None  # absolute frame difference, if computed
     iou: float | None = None  # bounding box IoU (TP only)
 
@@ -144,6 +145,7 @@ def evaluate_video(
                         video=f"{video_name}[event_{gt_idx}]",
                         expected_abandonment=True,
                         detected_abandonment=True,
+                        detected_frame=best_event.frame_num,
                         frame_error=int(best_error),
                         iou=iou,
                     )
@@ -156,6 +158,7 @@ def evaluate_video(
                         video=f"{video_name}[event_{gt_idx}]",
                         expected_abandonment=True,
                         detected_abandonment=True,
+                        detected_frame=best_event.frame_num,
                         frame_error=int(best_error),
                     )
                 )
@@ -177,6 +180,7 @@ def evaluate_video(
                     video=f"{video_name}[false_positive]",
                     expected_abandonment=False,
                     detected_abandonment=True,
+                    detected_frame=event.frame_num,
                 )
             )
 
