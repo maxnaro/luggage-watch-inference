@@ -44,9 +44,9 @@ class Attended(State):
 
 
 class Unattended(State):
-    def __init__(self):
+    def __init__(self, entered_at: float | None = None):
         self._abandonment_timeout = c.ABANDONMENT_TIMEOUT_SECONDS
-        self._entered_at: float = time.monotonic()
+        self._entered_at = time.monotonic() if entered_at is None else entered_at
 
     @property
     def name(self) -> str:

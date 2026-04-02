@@ -19,14 +19,43 @@ class LuggageContext:
     last_seen: float = field(default_factory=time.monotonic)
     owner_last_bbox: BBox | None = None
     owner_missing_since: float | None = None
+    _last_unattended_elapsed_seconds: float = field(default=0.0, init=False, repr=False)
+    _last_unattended_exit_at: float | None = field(default=None, init=False, repr=False)
     _owner_candidate_id: int | None = field(default=None, init=False, repr=False)
     _owner_candidate_frames: int = field(default=0, init=False, repr=False)
     _unattended_reset_frames: int = field(default=0, init=False, repr=False)
 
     def transition_to(self, new_state: State) -> None:
+        now = time.monotonic()
+
+        if isinstance(self.state, Unattended) and isinstance(new_state, Attended):
+            self._last_unattended_elapsed_seconds = self.state.elapsed_time
+            self._last_unattended_exit_at = now
+
+        if isinstance(new_state, Unattended) and self._should_resume_unattended_timer(now):
+            resumed_entered_at = now - self._last_unattended_elapsed_seconds
+            new_state = Unattended(entered_at=resumed_entered_at)
+
         if self.state.name != new_state.name:
             self._unattended_reset_frames = 0
+
+            if self.state.name != "Unattended" and new_state.name == "Unattended":
+                self._last_unattended_elapsed_seconds = 0.0
+                self._last_unattended_exit_at = None
+
         self.state = new_state
+
+    def _should_resume_unattended_timer(self, now: float) -> bool:
+        if self._last_unattended_exit_at is None:
+            return False
+
+        if self._last_unattended_elapsed_seconds <= 0:
+            return False
+
+        return (
+            now - self._last_unattended_exit_at
+            <= c.UNATTENDED_TIMER_RESUME_WINDOW_SECONDS
+        )
 
     @property
     def unattended_reset_confirmed(self) -> bool:
