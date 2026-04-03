@@ -12,9 +12,11 @@ Requires a running DeepStream environment (e.g. Jetson Orin Nano).
 """
 
 import argparse
+import contextlib
 import json
 import os
 import sys
+from datetime import datetime
 
 import gi
 
@@ -112,6 +114,45 @@ def _run_pipeline_for_video(
         raise RuntimeError(f"Pipeline error: {pipeline_error}")
 
 
+@contextlib.contextmanager
+def _redirect_to_file(path: str):
+    """Redirect stdout and stderr to *path* for the duration of the block."""
+    with open(path, "a") as fh:
+        old_stdout, old_stderr = sys.stdout, sys.stderr
+        sys.stdout = fh
+        sys.stderr = fh
+        # Redirect the C-level file descriptors (1=stdout, 2=stderr) so that
+        # GStreamer native debug output ends up in the log file too.
+        saved_stdout_fd = os.dup(1)
+        saved_stderr_fd = os.dup(2)
+        os.dup2(fh.fileno(), 1)
+        os.dup2(fh.fileno(), 2)
+        try:
+            yield fh
+        finally:
+            os.dup2(saved_stdout_fd, 1)
+            os.dup2(saved_stderr_fd, 2)
+            os.close(saved_stdout_fd)
+            os.close(saved_stderr_fd)
+            sys.stdout = old_stdout
+            sys.stderr = old_stderr
+
+
+class _TeeWriter:
+    """Write to multiple file-like objects at once."""
+
+    def __init__(self, *targets):
+        self._targets = targets
+
+    def write(self, s):
+        for t in self._targets:
+            t.write(s)
+
+    def flush(self):
+        for t in self._targets:
+            t.flush()
+
+
 def _print_summary(summary: EvalSummary) -> None:
     print("\n" + "=" * 60)
     print("EVALUATION SUMMARY")
@@ -178,36 +219,56 @@ def main():
     with open(args.ground_truth) as f:
         ground_truth = json.load(f)
 
+    # Set up log directory and timestamped log files
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "log")
+    os.makedirs(log_dir, exist_ok=True)
+    run_log_path = os.path.join(log_dir, f"run_{timestamp}.log")
+    eval_log_path = os.path.join(log_dir, f"evaluate_{timestamp}.log")
+
     Gst.init(None)
     logger = EventLogger()
     results = []
 
-    for video_name, gt_events in sorted(ground_truth.items()):
-        video_path = os.path.join(args.video_dir, video_name)
-        if not os.path.isfile(video_path):
-            print(f"  SKIP {video_name} (file not found)", file=sys.stderr)
-            continue
+    eval_log = open(eval_log_path, "w")
+    # Tee evaluate output to both the terminal and the evaluate log file
+    original_stdout = sys.stdout
+    sys.stdout = _TeeWriter(original_stdout, eval_log)
 
-        # HACK: use parameters from the first event for pipeline configuration
-        first_event = gt_events[0] if gt_events else {}
-        print(f"  Running {video_name} ({len(gt_events)} expected event(s), radius={first_event.get('radius_px')}px, timeout={first_event.get('threshold_s')}s) ...")
-        try:
-            _run_pipeline_for_video(video_path, logger, first_event, headless=args.headless)
-        except RuntimeError as e:
-            print(f"  ABORT: {e}", file=sys.stderr)
-            sys.exit(1)
+    try:
+        print(f"  Logs: {os.path.abspath(run_log_path)}")
+        print(f"  Eval: {os.path.abspath(eval_log_path)}")
 
-        print(f"    Detected {len(logger.events)} abandonment event(s)")
-        video_size = _get_video_resolution(video_path)
-        eval_results = evaluate_video(
-            video_name, gt_events, logger.events, args.temporal_tolerance,
-            muxer_size=(c.MUXER_WIDTH, c.MUXER_HEIGHT),
-            video_size=video_size,
-        )
-        results.extend(eval_results)
+        for video_name, gt_events in sorted(ground_truth.items()):
+            video_path = os.path.join(args.video_dir, video_name)
+            if not os.path.isfile(video_path):
+                print(f"  SKIP {video_name} (file not found)", file=sys.stderr)
+                continue
 
-    summary = summarise(results)
-    _print_summary(summary)
+            # HACK: use parameters from the first event for pipeline configuration
+            first_event = gt_events[0] if gt_events else {}
+            print(f"  Running {video_name} ({len(gt_events)} expected event(s), radius={first_event.get('radius_px')}px, timeout={first_event.get('threshold_s')}s) ...")
+            try:
+                with _redirect_to_file(run_log_path):
+                    _run_pipeline_for_video(video_path, logger, first_event, headless=args.headless)
+            except RuntimeError as e:
+                print(f"  ABORT: {e}", file=sys.stderr)
+                sys.exit(1)
+
+            print(f"    Detected {len(logger.events)} abandonment event(s)")
+            video_size = _get_video_resolution(video_path)
+            eval_results = evaluate_video(
+                video_name, gt_events, logger.events, args.temporal_tolerance,
+                muxer_size=(c.MUXER_WIDTH, c.MUXER_HEIGHT),
+                video_size=video_size,
+            )
+            results.extend(eval_results)
+
+        summary = summarise(results)
+        _print_summary(summary)
+    finally:
+        sys.stdout = original_stdout
+        eval_log.close()
 
 
 if __name__ == "__main__":

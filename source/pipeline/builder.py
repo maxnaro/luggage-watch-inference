@@ -93,7 +93,9 @@ def build_pipeline(headless: bool = False):
     queue3.link(sink)
 
     def on_pad_added(src, new_pad):
-        sink_pad = muxer.request_pad_simple(c.MUXER_SINK_PAD_NAME)
+        sink_pad = muxer.get_static_pad(c.MUXER_SINK_PAD_NAME)
+        if sink_pad is None:
+            sink_pad = muxer.request_pad_simple(c.MUXER_SINK_PAD_NAME)
         new_pad.link(sink_pad)
 
     source.connect(c.PAD_ADDED_SIGNAL, on_pad_added)
