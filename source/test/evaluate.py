@@ -52,6 +52,7 @@ def _run_pipeline_for_video(
     logger: EventLogger,
     gt_entry: dict,
     headless: bool = False,
+    video_size: tuple[int, int] | None = None,
 ) -> None:
     """Run the DeepStream pipeline on a single video and collect events."""
     logger.reset()
@@ -65,7 +66,15 @@ def _run_pipeline_for_video(
     original_radius = c.OWNER_RADIUS_PX
     original_timeout = c.ABANDONMENT_TIMEOUT_SECONDS
     c.SOURCE_URI = f"file://{os.path.abspath(video_path)}"
-    c.OWNER_RADIUS_PX = gt_entry.get("radius_px", original_radius)
+
+    radius_px = gt_entry.get("radius_px", original_radius)
+    # Ground truth radius is annotated at native video resolution; scale it
+    # to the muxer resolution used by the pipeline.
+    if video_size is not None:
+        scale = min(c.MUXER_WIDTH / video_size[0], c.MUXER_HEIGHT / video_size[1])
+        radius_px = radius_px * scale
+    c.OWNER_RADIUS_PX = radius_px
+
     c.ABANDONMENT_TIMEOUT_SECONDS = gt_entry.get("threshold_s", original_timeout)
 
     pipeline_error: str | None = None
@@ -221,7 +230,7 @@ def main():
 
     # Set up log directory and timestamped log files
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "log")
+    log_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "log", f"{timestamp}")
     os.makedirs(log_dir, exist_ok=True)
     run_log_path = os.path.join(log_dir, f"run_{timestamp}.log")
     eval_log_path = os.path.join(log_dir, f"evaluate_{timestamp}.log")
@@ -247,16 +256,16 @@ def main():
 
             # HACK: use parameters from the first event for pipeline configuration
             first_event = gt_events[0] if gt_events else {}
+            video_size = _get_video_resolution(video_path)
             print(f"  Running {video_name} ({len(gt_events)} expected event(s), radius={first_event.get('radius_px')}px, timeout={first_event.get('threshold_s')}s) ...")
             try:
                 with _redirect_to_file(run_log_path):
-                    _run_pipeline_for_video(video_path, logger, first_event, headless=args.headless)
+                    _run_pipeline_for_video(video_path, logger, first_event, headless=args.headless, video_size=video_size)
             except RuntimeError as e:
                 print(f"  ABORT: {e}", file=sys.stderr)
                 sys.exit(1)
 
             print(f"    Detected {len(logger.events)} abandonment event(s)")
-            video_size = _get_video_resolution(video_path)
             eval_results = evaluate_video(
                 video_name, gt_events, logger.events, args.temporal_tolerance,
                 muxer_size=(c.MUXER_WIDTH, c.MUXER_HEIGHT),
