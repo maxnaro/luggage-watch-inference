@@ -2,7 +2,7 @@
 gpu-id=0
 net-scale-factor=0.0039215697906911373
 model-color-format=0
-onnx-file=../model/luggage_detection.onnx
+onnx-file=../model/tuned.onnx
 model-engine-file=../model/model_b1_gpu0_fp16.engine
 labelfile-path=../model/labels.txt
 batch-size=1
@@ -27,4 +27,4 @@ topk=300
 pre-cluster-threshold=0.6
 
 [class-attrs-1]
-pre-cluster-threshold=0.4
+pre-cluster-threshold=0.35
