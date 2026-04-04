@@ -39,7 +39,7 @@ class Attended(State):
     def evaluate(
         self, context: LuggageContext, is_attended: bool, is_moving: bool
     ) -> None:
-        if not is_attended and not is_moving:
+        if context.unattended_entry_confirmed:
             context.transition_to(Unattended())
 
 
@@ -59,7 +59,9 @@ class Unattended(State):
     def evaluate(
         self, context: LuggageContext, is_attended: bool, is_moving: bool
     ) -> None:
-        if context.unattended_reset_confirmed:
+        if is_moving:
+            context.transition_to(Attended())
+        elif context.unattended_reset_confirmed:
             context.transition_to(Attended())
         elif self.elapsed_time >= self._abandonment_timeout:
             context.transition_to(Abandoned())
