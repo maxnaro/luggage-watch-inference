@@ -5,6 +5,7 @@
 *.ckpt
 
 # Temp/build outputs
+log/
 *.log
 build/
 dist/
