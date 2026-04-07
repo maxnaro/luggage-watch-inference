@@ -81,6 +81,7 @@ def _run_pipeline_for_video(
 
     try:
         pipeline, elements = build_pipeline(headless=headless)
+        print(f"    [pipeline] sink={elements['sink_type']} requested_headless={headless}")
 
         tracker_pad = elements["object_tracker"].get_static_pad("src")
         tracker_pad.add_probe(

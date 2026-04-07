@@ -66,6 +66,12 @@ sudo jetson_clocks
 
 source source/.venv/bin/activate
 python -m source.app
+
+# Headless (no display server)
+python -m source.app --headless
+
+# Headless evaluation
+python -m source.test.evaluate --ground-truth /path/to/ground_truth.json --video-dir /path/to/videos --headless
 ```
 
 On first run, TensorRT will build an engine file from the ONNX model.
