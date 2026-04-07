@@ -5,3 +5,4 @@ pyds @ https://github.com/NVIDIA-AI-IOT/deepstream_python_apps/releases/download
 PyGObject
 PyGObject-stubs
 typing_extensions
+jetson-stats
