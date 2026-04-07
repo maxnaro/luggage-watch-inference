@@ -1,3 +1,4 @@
+import argparse
 import gi
 
 from . import constants as c
@@ -9,11 +10,23 @@ from .pipeline.builder import build_pipeline
 from .logic.probes import tracker_src_pad_buffer_probe
 
 
+def _parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Run luggage watch inference")
+    parser.add_argument(
+        "--headless",
+        action="store_true",
+        help="Use fakesink output (no display required)",
+    )
+    return parser.parse_args()
+
+
 def main():
+    args = _parse_args()
     Gst.init(None)
 
     # Build the GStreamer pipeline
-    pipeline, elements = build_pipeline()
+    pipeline, elements = build_pipeline(headless=args.headless)
+    print(f"Pipeline sink: {elements['sink_type']}")
 
     # Attach the probes
     tracker_src_pad = elements["object_tracker"].get_static_pad("src")

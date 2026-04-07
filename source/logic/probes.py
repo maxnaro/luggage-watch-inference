@@ -20,6 +20,13 @@ def set_event_logger(logger) -> None:
     _event_logger = logger
 
 
+def _frame_time_seconds(frame_meta) -> float | None:
+    pts = int(getattr(frame_meta, "buf_pts", Gst.CLOCK_TIME_NONE))
+    if pts == Gst.CLOCK_TIME_NONE or pts < 0:
+        return None
+    return pts / Gst.SECOND
+
+
 def tracker_src_pad_buffer_probe(pad, info, u_data):
     """
     Reads the Tracking IDs and runs the Abandonment Logic.
@@ -58,7 +65,11 @@ def tracker_src_pad_buffer_probe(pad, info, u_data):
             except StopIteration:
                 break
 
-        luggage_info = process_frame(persons, luggage_items)
+        luggage_info = process_frame(
+            persons,
+            luggage_items,
+            frame_time_s=_frame_time_seconds(frame_meta),
+        )
 
         if _event_logger is not None:
             luggage_bboxes = {}

@@ -7,6 +7,18 @@ from gi.repository import Gst  # type: ignore
 from .. import constants as c
 
 
+def _has_display_server() -> bool:
+    return bool(os.getenv("DISPLAY") or os.getenv("WAYLAND_DISPLAY"))
+
+
+def _select_sink_type(headless: bool) -> str:
+    if headless:
+        return c.FAKESINK
+    if not _has_display_server():
+        return c.FAKESINK
+    return c.NVEGLGLESSINK
+
+
 def build_pipeline(headless: bool = False):
     """Creates and links the GStreamer elements for the DeepStream pipeline.
 
@@ -20,8 +32,11 @@ def build_pipeline(headless: bool = False):
     primary_infer = Gst.ElementFactory.make(c.NVINFER, c.PRIMARY_INFER_ELEMENT_NAME)
     object_tracker = Gst.ElementFactory.make(c.NVTRACKER, c.TRACKER_ELEMENT_NAME)
     osd = Gst.ElementFactory.make(c.NVDSOSD, c.OSD_ELEMENT_NAME)
-    sink_type = c.FAKESINK if headless else c.NVEGLGLESSINK
+    sink_type = _select_sink_type(headless)
     sink = Gst.ElementFactory.make(sink_type, c.SINK_ELEMENT_NAME)
+    if sink is None and sink_type != c.FAKESINK:
+        sink_type = c.FAKESINK
+        sink = Gst.ElementFactory.make(sink_type, c.SINK_ELEMENT_NAME)
 
     queue0 = Gst.ElementFactory.make(c.QUEUE, c.QUEUE + "0")
     queue1 = Gst.ElementFactory.make(c.QUEUE, c.QUEUE + "1")
@@ -67,6 +82,10 @@ def build_pipeline(headless: bool = False):
 
     osd.set_property(c.PROPERTY_PROCESS_MODE, c.OSD_PROCESS_MODE)
 
+    if sink_type == c.FAKESINK:
+        # Headless runs should not block on render clock synchronization.
+        sink.set_property("sync", False)
+
     # Add elements to pipeline
     for element in [
         source,
@@ -104,6 +123,7 @@ def build_pipeline(headless: bool = False):
     elements = {
         "primary_infer": primary_infer,
         "object_tracker": object_tracker,
+        "sink_type": sink_type,
     }
 
     return pipeline, elements

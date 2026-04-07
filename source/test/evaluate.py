@@ -26,7 +26,7 @@ from gi.repository import Gst, GLib  # type: ignore
 from .. import constants as c
 from ..pipeline.builder import build_pipeline
 from ..logic.probes import tracker_src_pad_buffer_probe, set_event_logger
-from ..logic.process import reset_contexts
+from ..logic.process import reset_contexts, set_debug_hook
 from .event_logger import EventLogger
 from .metrics import evaluate_video, summarise, EvalSummary
 
@@ -81,6 +81,7 @@ def _run_pipeline_for_video(
 
     try:
         pipeline, elements = build_pipeline(headless=headless)
+        print(f"    [pipeline] sink={elements['sink_type']} requested_headless={headless}")
 
         tracker_pad = elements["object_tracker"].get_static_pad("src")
         tracker_pad.add_probe(
@@ -166,7 +167,6 @@ def _print_summary(summary: EvalSummary) -> None:
     print("\n" + "=" * 60)
     print("EVALUATION SUMMARY")
     print("=" * 60)
-
     for r in summary.results:
         status = ""
         if r.expected_abandonment and r.iou is not None:
@@ -198,6 +198,19 @@ def _print_summary(summary: EvalSummary) -> None:
     print("=" * 60)
 
 
+def _make_context_debug_hook(video_name: str):
+    def _hook(event: str, payload: dict[str, object]) -> None:
+        details = " ".join(
+            f"{key}={payload[key]}" for key in sorted(payload)
+        )
+        if details:
+            print(f"    [ctx-debug:{video_name}] {event} {details}")
+        else:
+            print(f"    [ctx-debug:{video_name}] {event}")
+
+    return _hook
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Evaluate abandonment detection pipeline"
@@ -222,6 +235,13 @@ def main():
         "--headless",
         action="store_true",
         help="Use fakesink instead of nveglglessink (no display required)",
+    )
+    parser.add_argument(
+        "--debug-context",
+        action="store_true",
+        help=(
+            "Log context relink/create/expire debug events into the run log"
+        ),
     )
     args = parser.parse_args()
 
@@ -258,12 +278,20 @@ def main():
             first_event = gt_events[0] if gt_events else {}
             video_size = _get_video_resolution(video_path)
             print(f"  Running {video_name} ({len(gt_events)} expected event(s), radius={first_event.get('radius_px')}px, timeout={first_event.get('threshold_s')}s) ...")
+
+            if args.debug_context:
+                set_debug_hook(_make_context_debug_hook(video_name))
+            else:
+                set_debug_hook(None)
+
             try:
                 with _redirect_to_file(run_log_path):
                     _run_pipeline_for_video(video_path, logger, first_event, headless=args.headless, video_size=video_size)
             except RuntimeError as e:
                 print(f"  ABORT: {e}", file=sys.stderr)
                 sys.exit(1)
+            finally:
+                set_debug_hook(None)
 
             print(f"    Detected {len(logger.events)} abandonment event(s)")
             eval_results = evaluate_video(

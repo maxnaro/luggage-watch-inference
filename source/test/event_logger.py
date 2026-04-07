@@ -66,6 +66,22 @@ class EventLogger:
         by = box_b[1] + box_b[3] / 2
         return ((bx - ax) ** 2 + (by - ay) ** 2) ** 0.5
 
+    @staticmethod
+    def _bbox_area(box: tuple[float, float, float, float]) -> float:
+        return max(0.0, box[2]) * max(0.0, box[3])
+
+    @staticmethod
+    def _bbox_area_ratio(
+        box_a: tuple[float, float, float, float],
+        box_b: tuple[float, float, float, float],
+    ) -> float:
+        area_a = EventLogger._bbox_area(box_a)
+        area_b = EventLogger._bbox_area(box_b)
+        min_area = min(area_a, area_b)
+        if min_area <= 0.0:
+            return float("inf")
+        return max(area_a, area_b) / min_area
+
     def _is_duplicate_event(
         self,
         frame_num: int,
@@ -79,6 +95,19 @@ class EventLogger:
         for event in self._recent_events:
             iou = self._bbox_iou(event.bbox, bbox)
             distance = self._bbox_center_distance(event.bbox, bbox)
+            area_ratio = self._bbox_area_ratio(event.bbox, bbox)
+
+            if area_ratio > c.ABANDONED_EVENT_DEDUP_MAX_AREA_RATIO:
+                continue
+
+            tight_distance_px = min(
+                c.ABANDONED_EVENT_DEDUP_TIGHT_DISTANCE_PX,
+                c.ABANDONED_EVENT_DEDUP_DISTANCE_PX,
+            )
+
+            if distance <= tight_distance_px:
+                return True
+
             if (
                 iou >= c.ABANDONED_EVENT_DEDUP_IOU
                 and distance <= c.ABANDONED_EVENT_DEDUP_DISTANCE_PX
