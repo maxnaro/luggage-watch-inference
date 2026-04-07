@@ -12,7 +12,7 @@
 ####################################################################################################
 
 BaseConfig:
-  minDetectorConfidence: 0.15    # If the confidence of a detector bbox is lower than this, then it won't be considered for tracking
+  minDetectorConfidence: 0.2    # If the confidence of a detector bbox is lower than this, then it won't be considered for tracking
 
 TargetManagement:
   preserveStreamUpdateOrder: 0    # When assigning new target ids, preserve input streams' order to keep target ids in a deterministic order over multuple runs
@@ -21,8 +21,8 @@ TargetManagement:
   # [Creation & Termination Policy]
   minIouDiff4NewTarget: 0.5    # If the IOU between the newly detected object and any of the existing targets is higher than this threshold, this newly detected object will be discarded.
   minTrackerConfidence: 0.1    # If the confidence of an object tracker is lower than this on the fly, then it will be tracked in shadow mode. Valid Range: [0.0, 1.0]
-  probationAge: 1    # If the target's age exceeds this, the target will be considered to be valid.
-  maxShadowTrackingAge: 900    # Max length of shadow tracking. If the shadowTrackingAge exceeds this limit, the tracker will be terminated.
+  probationAge: 2    # If the target's age exceeds this, the target will be considered to be valid.
+  maxShadowTrackingAge: 600    # Max length of shadow tracking. If the shadowTrackingAge exceeds this limit, the tracker will be terminated.
   earlyTerminationAge: 12    # If the shadowTrackingAge reaches this threshold while in TENTATIVE period, the the target will be terminated prematurely.
 
 TrajectoryManagement:
@@ -37,19 +37,19 @@ DataAssociator:
   thresholdMahalanobis: 12.1875    # Threshold of Mahalanobis distance. A detection and a target are not matched if their distance is larger than the threshold.
 
   # [Association Metric: Thresholds for valid candidates]
-  minMatchingScore4Overall: 0.1    # Min total score
+  minMatchingScore4Overall: 0.15    # Min total score
   minMatchingScore4SizeSimilarity: 0.025    # Min bbox size similarity score
-  minMatchingScore4Iou: 0.1    # Min IOU score
-  minMatchingScore4ReidSimilarity: 0.10    # Min reid similarity score
+  minMatchingScore4Iou: 0.15    # Min IOU score
+  minMatchingScore4ReidSimilarity: 0.12    # Min reid similarity score
 
   # [Association Metric: Weights for valid candidates]
   matchingScoreWeight4SizeSimilarity: 0.05    # Weight for the Size-similarity score
-  matchingScoreWeight4Iou: 0.55    # Weight for the IOU score
-  matchingScoreWeight4ReidSimilarity: 0.4    # Weight for the reid similarity
+  matchingScoreWeight4Iou: 0.7    # Weight for the IOU score
+  matchingScoreWeight4ReidSimilarity: 0.2    # Weight for the reid similarity
 
   # [Association Metric: Tentative detections] only uses iou similarity for tentative detections
-  tentativeDetectorConfidence: 0.25    # If a detection's confidence is lower than this but higher than minDetectorConfidence, then it's considered as a tentative detection
-  minMatchingScore4TentativeIou: 0.2    # Min iou threshold to match targets and tentative detection
+  tentativeDetectorConfidence: 0.3    # If a detection's confidence is lower than this but higher than minDetectorConfidence, then it's considered as a tentative detection
+  minMatchingScore4TentativeIou: 0.25    # Min iou threshold to match targets and tentative detection
 
 StateEstimator:
   stateEstimatorType: 2    # the type of state estimator among { DUMMY=0, SIMPLE=1, REGULAR=2 }
