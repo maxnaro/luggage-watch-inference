@@ -36,6 +36,21 @@ def _context_spatial_tolerance(context: LuggageContext) -> float:
     return float(c.SPATIAL_TOLERANCE_PX)
 
 
+def _context_relink_max_missing_seconds(context: LuggageContext) -> float:
+    if context.state.name == "Abandoned":
+        return c.ABANDONED_CONTEXT_RELINK_MAX_MISSING_SECONDS
+    return c.CONTEXT_RELINK_MAX_MISSING_SECONDS
+
+
+def _bbox_area_ratio(box_a: BBox, box_b: BBox) -> float:
+    area_a = max(0.0, box_a.width) * max(0.0, box_a.height)
+    area_b = max(0.0, box_b.width) * max(0.0, box_b.height)
+    min_area = min(area_a, area_b)
+    if min_area <= 0.0:
+        return float("inf")
+    return max(area_a, area_b) / min_area
+
+
 def reset_contexts() -> None:
     """Clear all tracked luggage contexts."""
     _emit_debug("contexts_reset", active_contexts=len(_contexts))
@@ -43,7 +58,9 @@ def reset_contexts() -> None:
 
 
 def process_frame(
-    persons: list, luggage_items: list
+    persons: list,
+    luggage_items: list,
+    frame_time_s: float | None = None,
 ) -> dict[int, dict[str, str | int | None]]:
     """
     Evaluates the spatial relationship between persons and luggage.
@@ -56,6 +73,7 @@ def process_frame(
         person_bboxes[person.object_id] = BBox(rect)
 
     frame_ids: set[int] = {item.object_id for item in luggage_items}
+    current_time = time.monotonic() if frame_time_s is None else frame_time_s
     results: dict[int, dict[str, str | int | None]] = {}  # luggage_id -> {"state": state_name, "owner_id": owner_id}
 
     for luggage in luggage_items:
@@ -63,24 +81,31 @@ def process_frame(
         rect = luggage.rect_params
         luggage_bbox = BBox(rect)
 
-        _handle_tracker_flip(luggage_id, luggage_bbox, frame_ids)
+        _handle_tracker_flip(luggage_id, luggage_bbox, frame_ids, current_time)
 
-        results[luggage_id] = _contexts[luggage_id].update(luggage_bbox, person_bboxes)
+        results[luggage_id] = _contexts[luggage_id].update(
+            luggage_bbox,
+            person_bboxes,
+            now_s=current_time,
+        )
 
-    _handle_tracker_loss(frame_ids)
+    _handle_tracker_loss(frame_ids, current_time)
 
     return results
 
 
 def _handle_tracker_flip(
-    luggage_id: int, luggage_bbox: BBox, frame_ids: set[int]
+    luggage_id: int,
+    luggage_bbox: BBox,
+    frame_ids: set[int],
+    current_time: float,
 ) -> None:
     """
     Handles tracker ID flips by transferring context from the old ID to the new ID.
     """
     if luggage_id not in _contexts:
         matched_id = None
-        best_distance = float("inf")
+        best_score: tuple[float, float, float] | None = None
         for old_id, context in _contexts.items():
             if old_id == luggage_id or old_id in frame_ids:
                 continue
@@ -88,14 +113,25 @@ def _handle_tracker_flip(
             if context.last_bbox is None:
                 continue
 
+            missing_age = current_time - context.last_seen
+            max_missing_age = _context_relink_max_missing_seconds(context)
+            if missing_age > max_missing_age:
+                continue
+
             distance = luggage_bbox.distance_to(context.last_bbox)
             tolerance = _context_spatial_tolerance(context)
-            if (
-                distance < tolerance
-                and distance < best_distance
-            ):
+
+            area_ratio = _bbox_area_ratio(luggage_bbox, context.last_bbox)
+            if area_ratio > c.CONTEXT_RELINK_MAX_AREA_RATIO:
+                continue
+
+            if distance > tolerance:
+                continue
+
+            score = (distance, missing_age, area_ratio)
+            if best_score is None or score < best_score:
                 matched_id = old_id
-                best_distance = distance
+                best_score = score
 
         if matched_id is not None:
             _contexts[luggage_id] = _contexts.pop(matched_id)
@@ -104,7 +140,9 @@ def _handle_tracker_flip(
                 "context_relinked",
                 old_id=matched_id,
                 new_id=luggage_id,
-                distance_px=round(best_distance, 2),
+                distance_px=round(best_score[0], 2),
+                missing_age_s=round(best_score[1], 3),
+                area_ratio=round(best_score[2], 3),
                 tolerance_px=round(
                     _context_spatial_tolerance(_contexts[luggage_id]), 2
                 ),
@@ -112,17 +150,17 @@ def _handle_tracker_flip(
             )
         else:
             _contexts[luggage_id] = LuggageContext(luggage_id)
+            _contexts[luggage_id].created_at = current_time
             _emit_debug("context_created", luggage_id=luggage_id)
 
-    _contexts[luggage_id].last_seen = time.monotonic()
+    _contexts[luggage_id].last_seen = current_time
 
 
-def _handle_tracker_loss(seen_ids: set[int]) -> None:
+def _handle_tracker_loss(seen_ids: set[int], current_time: float) -> None:
     """
     Handles tracker loss by removing contexts for lost IDs when time has exceeded
     the grace period.
     """
-    current_time = time.monotonic()
     for missing_id in set(_contexts) - seen_ids:
         context = _contexts[missing_id]
         ttl_seconds = c.CONTEXT_TTL_SECONDS
