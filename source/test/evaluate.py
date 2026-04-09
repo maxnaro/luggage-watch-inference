@@ -28,6 +28,7 @@ from ..pipeline.builder import build_pipeline
 from ..logic.probes import tracker_src_pad_buffer_probe, set_event_logger
 from ..logic.process import reset_contexts, set_debug_hook
 from .event_logger import EventLogger
+from .hardware_monitor import JetsonHardwareMonitor
 from .metrics import evaluate_video, summarise, EvalSummary
 
 
@@ -243,7 +244,23 @@ def main():
             "Log context relink/create/expire debug events into the run log"
         ),
     )
+    parser.add_argument(
+        "--disable-hardware-log",
+        action="store_true",
+        help=(
+            "Disable Jetson hardware telemetry logging via jtop"
+        ),
+    )
+    parser.add_argument(
+        "--hardware-sample-interval",
+        type=float,
+        default=1.0,
+        help="Hardware sampling interval in seconds (default: 1.0)",
+    )
     args = parser.parse_args()
+
+    if args.hardware_sample_interval <= 0:
+        parser.error("--hardware-sample-interval must be > 0")
 
     with open(args.ground_truth) as f:
         ground_truth = json.load(f)
@@ -254,9 +271,12 @@ def main():
     os.makedirs(log_dir, exist_ok=True)
     run_log_path = os.path.join(log_dir, f"run_{timestamp}.log")
     eval_log_path = os.path.join(log_dir, f"evaluate_{timestamp}.log")
+    hw_csv_path = os.path.join(log_dir, f"hardware_{timestamp}.csv")
+    hw_summary_path = os.path.join(log_dir, f"hardware_summary_{timestamp}.json")
 
     Gst.init(None)
     logger = EventLogger()
+    hardware_monitor: JetsonHardwareMonitor | None = None
     results = []
 
     eval_log = open(eval_log_path, "w")
@@ -267,6 +287,20 @@ def main():
     try:
         print(f"  Logs: {os.path.abspath(run_log_path)}")
         print(f"  Eval: {os.path.abspath(eval_log_path)}")
+
+        if not args.disable_hardware_log:
+            hardware_monitor = JetsonHardwareMonitor(
+                csv_path=hw_csv_path,
+                summary_path=hw_summary_path,
+                sample_interval_s=args.hardware_sample_interval,
+            )
+            hw_enabled, hw_message = hardware_monitor.start()
+            if hw_enabled:
+                print(f"  Hardware: {hw_message}")
+            else:
+                print(f"  Hardware: disabled ({hw_message})")
+        else:
+            print("  Hardware: disabled (--disable-hardware-log)")
 
         for video_name, gt_events in sorted(ground_truth.items()):
             video_path = os.path.join(args.video_dir, video_name)
@@ -284,6 +318,9 @@ def main():
             else:
                 set_debug_hook(None)
 
+            if hardware_monitor is not None:
+                hardware_monitor.set_context(video_name)
+
             try:
                 with _redirect_to_file(run_log_path):
                     _run_pipeline_for_video(video_path, logger, first_event, headless=args.headless, video_size=video_size)
@@ -292,6 +329,8 @@ def main():
                 sys.exit(1)
             finally:
                 set_debug_hook(None)
+                if hardware_monitor is not None:
+                    hardware_monitor.clear_context()
 
             print(f"    Detected {len(logger.events)} abandonment event(s)")
             eval_results = evaluate_video(
@@ -304,6 +343,10 @@ def main():
         summary = summarise(results)
         _print_summary(summary)
     finally:
+        if hardware_monitor is not None:
+            summary_path = hardware_monitor.stop()
+            print(f"  Hardware summary: {os.path.abspath(summary_path)}")
+
         sys.stdout = original_stdout
         eval_log.close()
 
