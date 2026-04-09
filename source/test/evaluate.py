@@ -54,6 +54,7 @@ def _run_pipeline_for_video(
     gt_entry: dict,
     headless: bool = False,
     video_size: tuple[int, int] | None = None,
+    record_path: str | None = None,
 ) -> None:
     """Run the DeepStream pipeline on a single video and collect events."""
     logger.reset()
@@ -81,7 +82,7 @@ def _run_pipeline_for_video(
     pipeline_error: str | None = None
 
     try:
-        pipeline, elements = build_pipeline(headless=headless)
+        pipeline, elements = build_pipeline(headless=headless, record_path=record_path)
         print(f"    [pipeline] sink={elements['sink_type']} requested_headless={headless}")
 
         tracker_pad = elements["object_tracker"].get_static_pad("src")
@@ -245,6 +246,11 @@ def main():
         ),
     )
     parser.add_argument(
+        "--record",
+        action="store_true",
+        help="Record pipeline output (with OSD overlay) to mp4 files in the log directory",
+    )
+    parser.add_argument(
         "--disable-hardware-log",
         action="store_true",
         help=(
@@ -321,9 +327,14 @@ def main():
             if hardware_monitor is not None:
                 hardware_monitor.set_context(video_name)
 
+            record_path = None
+            if args.record:
+                video_stem = os.path.splitext(video_name)[0]
+                record_path = os.path.join(log_dir, f"{video_stem}.mp4")
+
             try:
                 with _redirect_to_file(run_log_path):
-                    _run_pipeline_for_video(video_path, logger, first_event, headless=args.headless, video_size=video_size)
+                    _run_pipeline_for_video(video_path, logger, first_event, headless=args.headless, video_size=video_size, record_path=record_path)
             except RuntimeError as e:
                 print(f"  ABORT: {e}", file=sys.stderr)
                 sys.exit(1)

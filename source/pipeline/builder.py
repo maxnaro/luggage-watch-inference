@@ -19,11 +19,12 @@ def _select_sink_type(headless: bool) -> str:
     return c.NVEGLGLESSINK
 
 
-def build_pipeline(headless: bool = False):
+def build_pipeline(headless: bool = False, record_path: str | None = None):
     """Creates and links the GStreamer elements for the DeepStream pipeline.
 
     Args:
         headless: If True, use fakesink instead of nveglglessink (for evaluation).
+        record_path: If set, encode the OSD output to an mp4 file at this path.
     """
     pipeline = Gst.Pipeline()
 
@@ -79,6 +80,8 @@ def build_pipeline(headless: bool = False):
     )
     object_tracker.set_property(c.PROPERTY_TRACKER_WIDTH, c.TRACKER_WIDTH)
     object_tracker.set_property(c.PROPERTY_TRACKER_HEIGHT, c.TRACKER_HEIGHT)
+    if record_path is not None:
+        object_tracker.set_property("user-meta-pool-size", 64)
 
     osd.set_property(c.PROPERTY_PROCESS_MODE, c.OSD_PROCESS_MODE)
 
@@ -86,8 +89,42 @@ def build_pipeline(headless: bool = False):
         # Headless runs should not block on render clock synchronization.
         sink.set_property("sync", False)
 
+    # Build recording elements (if requested)
+    record_elements = []
+    tee = None
+    queue_display = None
+    queue_record = None
+    record_sink = None
+    if record_path is not None:
+        queue_record = Gst.ElementFactory.make(c.QUEUE, "queue_record")
+        record_sink = Gst.ElementFactory.make("nvvideoencfilesinkbin", "record_sink")
+
+        if not all([queue_record, record_sink]):
+            raise RuntimeError(
+                "Failed to create recording elements. Ensure DeepStream video encoder plugins are installed."
+            )
+
+        # Configure the DeepStream recording bin (queue -> convert -> encode -> mux -> file).
+        record_sink.set_property("output-file", record_path)
+        record_sink.set_property("container", 1)  # mp4
+        record_sink.set_property("codec", 1)  # h264
+        record_sink.set_property("bitrate", 4_000_000)
+        record_sink.set_property("sync", False)
+
+        record_elements = [queue_record, record_sink]
+
+        # In non-headless mode, keep the normal display sink and record in parallel.
+        if sink_type != c.FAKESINK:
+            tee = Gst.ElementFactory.make("tee", "tee")
+            queue_display = Gst.ElementFactory.make(c.QUEUE, "queue_display")
+            if not all([tee, queue_display]):
+                raise RuntimeError(
+                    "Failed to create tee elements for display + recording."
+                )
+            record_elements = [tee, queue_display] + record_elements
+
     # Add elements to pipeline
-    for element in [
+    pipeline_elements = [
         source,
         muxer,
         queue0,
@@ -97,8 +134,11 @@ def build_pipeline(headless: bool = False):
         queue2,
         osd,
         queue3,
-        sink,
-    ]:
+    ]
+    if record_path is None or sink_type != c.FAKESINK:
+        pipeline_elements.append(sink)
+
+    for element in pipeline_elements + record_elements:
         pipeline.add(element)
 
     # Link elements (source to muxer is linked dynamically via pad-added signal)
@@ -108,8 +148,41 @@ def build_pipeline(headless: bool = False):
     queue1.link(object_tracker)
     object_tracker.link(queue2)
     queue2.link(osd)
-    osd.link(queue3)
-    queue3.link(sink)
+
+    if record_path is not None:
+        osd.link(queue3)
+
+        if tee is None:
+            # Headless + recording: route directly to the recording sink.
+            queue3.link(queue_record)
+            queue_record.link(record_sink)
+        else:
+            # Display + recording: split output via tee.
+            queue3.link(tee)
+
+            tee_display_pad = tee.request_pad_simple("src_%u")
+            tee_record_pad = tee.request_pad_simple("src_%u")
+            if tee_display_pad is None or tee_record_pad is None:
+                raise RuntimeError(
+                    "Failed to request tee source pads for recording pipeline."
+                )
+
+            if (
+                tee_display_pad.link(queue_display.get_static_pad("sink"))
+                != Gst.PadLinkReturn.OK
+            ):
+                raise RuntimeError("Failed to link tee display branch.")
+            if (
+                tee_record_pad.link(queue_record.get_static_pad("sink"))
+                != Gst.PadLinkReturn.OK
+            ):
+                raise RuntimeError("Failed to link tee recording branch.")
+
+            queue_display.link(sink)
+            queue_record.link(record_sink)
+    else:
+        osd.link(queue3)
+        queue3.link(sink)
 
     def on_pad_added(src, new_pad):
         sink_pad = muxer.get_static_pad(c.MUXER_SINK_PAD_NAME)
